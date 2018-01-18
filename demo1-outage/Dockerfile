@@ -4,7 +4,7 @@ MAINTAINER Alex Egorov (alex202@egorov.net)
 
 WORKDIR /opt/demo
 
-RUN apt-get update && apt-get install -y ca-certificates
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y ca-certificates
 
 ENTRYPOINT ["/opt/demo/randstr"]
 EXPOSE 8080

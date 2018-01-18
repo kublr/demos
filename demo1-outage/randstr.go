@@ -1,4 +1,4 @@
-package main
+package demo1_outage
 
 import (
 	"fmt"

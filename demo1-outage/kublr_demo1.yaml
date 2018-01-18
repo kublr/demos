@@ -31,7 +31,7 @@ alertmanager:
     receivers:
       - name: slack
         slack_configs:
-          - api_url: 'https://hooks.slack.com/services/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'
+          - api_url: '<slack_api_url>'
             channel: 'kublr'
             text: '{{ template "__text_alert_list" .Alerts }}'
             send_resolved: true
