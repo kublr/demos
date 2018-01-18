@@ -1,0 +1,44 @@
+demo:
+  enabled: true
+grafana:
+  nodeSelector:
+    kubernetes.io/role: master
+  tolerations:
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+prometheus:
+  nodeSelector:
+    kubernetes.io/role: master
+  tolerations:
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+alertmanager:
+  nodeSelector:
+    kubernetes.io/role: master
+  tolerations:
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+  configuration: |
+    global:
+    route:
+      receiver: 'slack'
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 1h
+    receivers:
+      - name: slack
+        slack_configs:
+          - api_url: 'https://hooks.slack.com/services/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'
+            channel: 'kublr'
+            text: '{{ template "__text_alert_list" .Alerts }}'
+            send_resolved: true
+kubestatemetrics:
+  nodeSelector:
+    kubernetes.io/role: master
+  tolerations:
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
