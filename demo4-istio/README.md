@@ -1,5 +1,7 @@
 
 
+### Add to clustre config
+
 ```yaml
   kublrAgentConfig:
     kublr:
@@ -13,7 +15,9 @@
     
 ```
 
+## Generate cluster configs
 
+```
 docker run --rm \
     -v "$(pwd)/gen-out:/gen-out" \
     -v "$(pwd):/gen" \
@@ -21,7 +25,17 @@ docker run --rm \
     -u "$(id -u)" \
     -e HOME=/ \
     cr.kublr.com/kublr/gen:1.8.0 -f /gen/.cluster-config.yaml -o /gen-out
-    
+```  
+  
+## Install kublr cluster
+
+```
+(cd gen-out && bash aws-istio4-aws1.sh)
+```  
+   
+## Download and untar istion v0.5.0
+
+...   
    
 ## Install istio   
     
@@ -78,3 +92,35 @@ Open in browser
 ```
 echo http://$SMACKWEB
 ```
+
+Web page should work
+
+
+## Canary Deploy
+
+Make changes in smackapi
+Change color in smackapi/smackapi/handlers.go, line number 31, e.g to "DarkGreen"
+
+Commit changes
+
+```
+( cd smackapi/smackapi \
+    && git add -A \
+    && git commit -m "changed bgColor to DarkGreen" \
+)
+```
+
+Build go binary, docker image, push docker into registry and update helm package with DOCKER_TAG we have used to push
+
+```
+sh build.sh
+```
+
+
+Change  weights of v1 and v2 smackapi microservices:
+
+```
+helm upgrade -i --set image.v1.weight=50 --set image.v2.weight=50 --set image.v2.tag=${DOCKER_TAG} smackapi smackapi/charts/smackapi
+```
+
+Open http://$SMACKWEB in browser once again. Some of cells are colored in Colar (v1), some in Dark Green (v2)

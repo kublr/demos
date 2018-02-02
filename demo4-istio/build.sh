@@ -5,7 +5,7 @@ cd smackapi/smackapi
 GIT_BRANCH=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
 GIT_COMMIT=$(git rev-parse --short HEAD)
 BUILD_DATE=$(date +"%Y-%m-%d %H-%M-%S")
-DOCKER_TAG=${GIT_BRANCH}-${GIT_COMMIT}
+export DOCKER_TAG=${GIT_BRANCH}-${GIT_COMMIT}
 
 echo $DOCKER_TAG
 
@@ -25,5 +25,3 @@ cd ../../
 helm upgrade -i --set image.v2.tag=${DOCKER_TAG} smackapi smackapi/charts/smackapi
 
 echo $?
-
-# --set service.type=LoadBalancer --set service.externalPort=80
