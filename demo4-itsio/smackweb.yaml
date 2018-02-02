@@ -1,0 +1,6 @@
+api:
+  host: smackapi-smackapi
+  port: 80
+service:
+  type: LoadBalancer
+  externalPort: 80
