@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .Release.Name }}-data"
+  labels:
+    app: "{{ .Release.Name }}-data"
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+data:
+  {{- $files := .Files }}
+  {{range $file := .Values.Data.Files }}
+  {{ $file }}: |
+{{ $files.Get (printf "data/%s" $file) | indent 4}}
+  {{- end }}
