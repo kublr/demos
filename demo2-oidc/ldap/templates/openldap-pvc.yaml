@@ -1,0 +1,45 @@
+{{- if and .Values.openldap.enabled .Values.openldap.persistence.enabled  }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: '{{ .Release.Name }}-openldap-data'
+  labels:
+    app: '{{ .Release.Name }}-openldap-data'
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+  annotations:
+  {{- if .Values.openldap.persistence.storageClass }}
+    volume.beta.kubernetes.io/storage-class: {{ .Values.openldap.persistence.storageClass | quote }}
+  {{- else }}
+    volume.alpha.kubernetes.io/storage-class: default
+  {{- end }}
+spec:
+  accessModes:
+    - {{ .Values.openldap.persistence.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.openldap.persistence.size | quote }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: '{{ .Release.Name }}-openldap-config'
+  labels:
+    app: '{{ .Release.Name }}-openldap-config'
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+  annotations:
+  {{- if .Values.openldap.persistence.storageClass }}
+    volume.beta.kubernetes.io/storage-class: {{ .Values.openldap.persistence.storageClass | quote }}
+  {{- else }}
+    volume.alpha.kubernetes.io/storage-class: default
+  {{- end }}
+spec:
+  accessModes:
+    - {{ .Values.openldap.persistence.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.openldap.persistence.size | quote }}
+{{- end }}

@@ -1,0 +1,6 @@
+dependencies:
+  - name: mysql
+    version: 0.3.1
+    condition: mysql.enabled
+    repository: https://kubernetes-charts.storage.googleapis.com/
+

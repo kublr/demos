@@ -1,0 +1,7 @@
+project: "alex-egorov/brigade-smackapi"
+repository: "github.com/alex-egorov/brigade-smackapi"
+cloneURL: "https://github.com/alex-egorov/brigade-smackapi.git"
+sharedSecret: "SecretPassword"
+secrets:
+  dockerUsername: alex202
+  slackWebhook: "https://hooks.slack.com/....."

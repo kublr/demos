@@ -1,0 +1,17 @@
+rbac:
+  enabled: true
+service:
+  type: ClusterIP
+ingress:
+  enabled: true
+  hosts:
+    - brgd-gw.demo.kublr.com
+gw:
+  name: brigade-gateway # change according to docker.io/deis images
+api:
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    hosts:
+      - brgd-api.demo.kublr.com

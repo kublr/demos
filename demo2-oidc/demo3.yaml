@@ -1,0 +1,56 @@
+influxdb:
+  enabled: false
+alertmanager:
+  ingress:
+    domain: alertmanager.demo.kublr.com
+  authentication:
+    enabled: true
+    oidc:
+      enabled: true
+      encryption_key: ""
+      keycloak_url: "https://keycloak.demo.kublr.com/"
+      realm: "iam"
+      client_id: "alertmanager"
+      client_secret: "3fde0a65-c526-4428-b829-c227bc7ffd8f"
+      admin_role: "admins"
+grafana:
+  ingress:
+    domain: grafana.demo.kublr.com
+  authentication:
+    enabled: true
+    oidc:
+      enabled: true
+      encryption_key: ""
+      keycloak_url: "https://keycloak.demo.kublr.com/"
+      realm: "iam"
+      client_id: "grafana"
+      client_secret: "1dd131b1-85c2-443c-befa-0b67cd218cdc"
+      admin_role: "admins"
+      guest_role: "viewers"
+prometheus:
+  ingress:
+    domain: prometheus.demo.kublr.com
+  authentication:
+    enabled: true
+    oidc:
+      enabled: true
+      encryption_key: ""
+      keycloak_url: "https://keycloak.demo.kublr.com/"
+      realm: "iam"
+      client_id: "prometheus"
+      client_secret: "aad8c08f-6415-41d8-b44a-89550c1c0d0b"
+      admin_role: "admins"
+      guest_role: "viewers"
+kibana:
+  ingress:
+    domain: kibana.demo.kublr.com
+  authentication:
+    enabled: true
+    oidc:
+      enabled: true
+      encryption_key: ""
+      keycloak_url: "https://keycloak.demo.kublr.com/"
+      realm: "iam"
+      client_id: "kibana"
+      client_secret: "22ce4127-da6b-47aa-801c-45880d8d1fd0"
+      kibana_role: "admins"

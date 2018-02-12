@@ -21,10 +21,6 @@ spec:
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-#         preferredDuringSchedulingIgnoredDuringExecution:
-#           - weight: 1
-#             podAffinityTerm:
-#               labelSelector:
               - labelSelector:
                   matchExpressions:
                   - key: app
@@ -34,7 +30,7 @@ spec:
                 topologyKey: "kubernetes.io/hostname"
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.registry }}/{{ .Values.image.repository }}:{{ .Values.version }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.version }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.internalPort }}

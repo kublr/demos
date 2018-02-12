@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: smackweb
+  labels:
+    app: smackweb
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: smackweb
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: smackweb
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: smackweb
+        version: webv1
+    spec:
+      containers:
+      - name: smackweb
+        image: chzbrgr71/smackweb:kubecon
+        env:
+        - name: API_SERVICE
+          value: "smackapi.microsmack.svc.cluster.local"
+        - name: API_PORT
+          value: "8081"
+        - name: KUBE_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: KUBE_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: KUBE_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        resources:
+          requests:
+            cpu: "100m"
+        imagePullPolicy: IfNotPresent #Always
+        ports:
+        - containerPort: 8080

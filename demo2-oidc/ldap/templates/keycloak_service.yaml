@@ -1,0 +1,31 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Release.Name }}-keycloak"
+  labels:
+    app: "{{ .Release.Name }}-keycloak"
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+    provider: "kublr"
+spec:
+  selector:
+    app: "{{ .Chart.Name }}"
+    release: {{.Release.Name | quote }}
+    provider: "kublr"
+  clusterIP: None
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  - name: jgroups
+    port: 7600
+    targetPort: 7600
+    protocol: TCP
+  - name: jgroups7800
+    port: 7800
+    targetPort: 7800
+    protocol: TCP
+{{- end }}

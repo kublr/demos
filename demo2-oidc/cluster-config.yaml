@@ -1,0 +1,67 @@
+kind: Secret
+metadata:
+  name: awsSecret1
+spec:
+  awsApiAccessKey:
+    accessKeyId: 'AKIAIDNGPS6FEX7VDJBA'
+    secretAccessKey: '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'
+---
+kind: Cluster
+metadata:
+  name: cluster-demo3
+spec:
+  kublrAgentTgzUrl: https://repo.kublr.com/repository/gobinaries/kublr/1.8.0/kublr-1.8.0-linux.tar.gz
+#  kublrAgentRepositoryUsername: ecp-build
+#  kublrAgentRepositoryPassword:
+  locations:
+  - name: aws1
+    aws:
+      region: us-west-1
+      availabilityZones:
+      - us-west-1a
+      - us-west-1b
+      awsApiAccessSecretRef: awsSecret1
+  master:
+    locations:
+    - aws:
+        instanceType: t2.large
+#        overrideImageId: ami-47c1c427
+        availabilityZones:
+        - us-west-1a
+        sshKey: <ssh_key_name>
+      locationRef: aws1
+    minNodes: 1
+    kublrAgentConfig:
+      kublr:
+        kube_api_server_flag:
+          oidc_issuer_url: '--oidc-issuer-url=https://keycloak.demo.kublr.com/auth/realms/iam'
+          oidc_client_id: '--oidc-client-id=kubernetes'
+          oidc_username_claim: '--oidc-username-claim=preferred_username'
+          oidc-groups-claim: '--oidc-groups-claim=user_groups'
+  nodes:
+  - locations:
+    - aws:
+        instanceType: t2.large
+        availabilityZones:
+        - us-west-1a
+        - us-west-1b
+#        overrideImageId: ami-47c1c427
+        sshKey: <ssh_key_name>
+      locationRef: aws1
+    autoscaling: false
+    minNodes: 3
+  features:
+    logging:
+      logCollection:
+        enabled: true
+    monitoring:
+      statsCollection:
+        enabled: true
+    ingress:
+      ingressControllers:
+      - nginx:
+          acme:
+            apiUrl: <api url of letsencrypt acme> # e.g. https://acme-v01.api.letsencrypt.org/directory
+            email: <e-mail of letsencrypt account>
+            enabled: true
+          enabled: true

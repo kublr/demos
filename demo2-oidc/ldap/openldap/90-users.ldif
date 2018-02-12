@@ -1,0 +1,69 @@
+# 1. Define groups base DN in catalog
+dn: ou=Groups,dc=demo,dc=kublr,dc=com
+objectClass: organizationalUnit
+ou: Groups
+description: Test users groups
+
+# 1.1 Define users base DN in catalog
+dn: ou=Users,dc=demo,dc=kublr,dc=com
+objectClass: organizationalUnit
+ou: Users
+description: Test users for LDAP auth
+
+# 1.2 Define base DN for App users
+dn: ou=AppUsers,dc=demo,dc=kublr,dc=com
+objectClass: organizationalUnit
+ou: AppUsers
+description: AppUsers list
+
+# 2. Define Users
+
+# 2.1 Add Posix user for Unix based system
+dn: uid=test,ou=Users,dc=demo,dc=kublr,dc=com
+objectClass: top
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: posixAccount
+objectClass: shadowAccount
+employeeType: unixUser
+uid: test
+sn: Test
+givenName: Test
+cn: Test Test
+displayName: Test User
+uidNumber: 10000
+gidNumber: 5000
+userPassword: test
+gecos: Test Test
+loginShell: /bin/bash
+homeDirectory: /home/test
+mail: test@demo.kublr.com
+
+# 2.2 Add admin-user user for application auth
+dn: uid=admin-user,ou=AppUsers,dc=demo,dc=kublr,dc=com
+objectClass: inetOrgPerson
+employeeType: appUser
+employeeType: keycloak
+employeeType: kubernetes
+employeeType: kibana
+employeeType: grafana
+uid: admin-user
+sn: admin-user
+givenName: Admin User
+cn: Admin User
+userPassword: admin-user
+mail: admin-user@demo.kublr.com
+
+# 2.3 Add read-only user user for application auth
+dn: uid=read-only,ou=AppUsers,dc=demo,dc=kublr,dc=com
+objectClass: inetOrgPerson
+employeeType: appUser
+employeeType: keycloak
+employeeType: kibana
+employeeType: grafana
+uid: read-only
+sn: read-only
+givenName: Read-Only User
+cn: Read-Only User
+userPassword: read-only
+mail: read-only@demo.kublr.com

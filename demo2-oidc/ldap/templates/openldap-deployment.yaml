@@ -1,0 +1,90 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: "{{ .Release.Name }}-openldap"
+  labels:
+    app: "openldap"
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: "{{ .Release.Name }}-openldap"
+        release: {{ .Release.Name }}
+    spec:
+      volumes:
+        - name: "{{ .Release.Name }}-openldap-data"
+          {{- if .Values.openldap.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Name }}-openldap-data"
+          {{- end }}
+        - name: "{{ .Release.Name }}-openldap-config"
+          {{- if .Values.openldap.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Name }}-openldap-config"
+          {{- end }}
+        - name: "{{ .Release.Name }}-openldap-custom"
+          configMap:
+            name: "{{ .Release.Name }}-openldap-custom"
+            defaultMode: 0755
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.openldap.image.repository }}:{{ .Values.openldap.image.tag }}"
+          imagePullPolicy: {{ .Values.openldap.image.pullPolicy }}
+          command:
+            - /container/tool/run
+          args:
+            - --copy-service
+            - --loglevel
+            - debug
+          ports:
+            - containerPort: {{ .Values.openldap.service.internalPort }}
+          volumeMounts:
+            - name: "{{ .Release.Name }}-openldap-data"
+              mountPath: /var/lib/ldap
+            - name: "{{ .Release.Name }}-openldap-config"
+              mountPath: /etc/ldap/slapd.d
+            - name: "{{ .Release.Name }}-openldap-custom"
+              mountPath: /container/service/slapd/assets/config/bootstrap/ldif/custom
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.openldap.service.internalPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.openldap.service.internalPort }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          env:
+            - name: LDAP_LOG_LEVEL
+              value: {{ .Values.openldap.config.ldap_log_level | quote }}
+            - name: LDAP_ORGANISATION
+              value: {{ .Values.openldap.config.ldap_ogranisation | quote }}
+            - name: LDAP_DOMAIN
+              value: {{ .Values.openldap.config.ldap_domain | quote }}
+            - name: LDAP_ADMIN_PASSWORD
+              value: {{ .Values.openldap.config.ldap_admin_password | quote }}
+            - name: LDAP_CONFIG_PASSWORD
+              value: {{ .Values.openldap.config.ldap_config_password | quote }}
+            - name: LDAP_RFC2307BIS_SCHEMA
+              value: {{ .Values.openldap.config.ldap_rfc2307bis_schema | quote }}
+            - name: LDAP_BACKEND
+              value: {{ .Values.openldap.config.ldap_backend | quote }}
+            - name: LDAP_TLS
+              value: {{ .Values.openldap.config.ldap_tls | quote }}
+            - name: LDAP_REPLICATION
+              value: {{ .Values.openldap.config.ldap_replication | quote }}
+            - name: KEEP_EXISTING_CONFIG
+              value: {{ .Values.openldap.config.keep_existing_config | quote }}
+            - name: LDAP_REMOVE_CONFIG_AFTER_SETUP
+              value: {{ .Values.openldap.config.ldap_remove_config_after_setup | quote }}
+          resources:
+{{ toYaml .Values.openldap.resources | indent 12 }}
+    {{- if .Values.openldap.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.openldap.nodeSelector | indent 8 }}
+    {{- end }}

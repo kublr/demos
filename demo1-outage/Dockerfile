@@ -10,3 +10,4 @@ ENTRYPOINT ["/opt/demo/randstr"]
 EXPOSE 8080
 
 ADD target/randstr randstr
+RUN chmod +x randstr

@@ -1,0 +1,123 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: helloworld
+  labels:
+    app: helloworld
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5959
+    targetPort: 5000
+    name: http-hello
+  selector:
+    app: helloworld
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: helloworld-v1
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: helloworld
+        version: v1
+    spec:
+      containers:
+      - name: helloworld
+        image: istio/examples-helloworld-v1
+        resources:
+          requests:
+            cpu: "100m"
+        imagePullPolicy: IfNotPresent #Always
+        ports:
+        - containerPort: 5000
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: helloworld-v2
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: helloworld
+        version: v2
+    spec:
+      containers:
+      - name: helloworld
+        image: istio/examples-helloworld-v2
+        resources:
+          requests:
+            cpu: "100m"
+        imagePullPolicy: IfNotPresent #Always
+        ports:
+        - containerPort: 5000
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: helloworld
+  annotations:
+    kubernetes.io/ingress.class: "istio"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /hello
+        backend:
+          serviceName: helloworld
+          servicePort: http-hello
+---
+apiVersion: config.istio.io/v1alpha2
+kind: RouteRule
+metadata:
+  name: prod
+spec:
+  destination:
+    name: helloworld
+  precedence: 1
+  route:
+  - labels:
+      version: v1
+    weight: 100
+  - labels:
+      version: v2
+    weight: 0
+---
+apiVersion: config.istio.io/v1alpha2
+kind: RouteRule
+metadata:
+  name: prod2
+spec:
+  destination:
+    name: helloworld
+  precedence: 2
+  route:
+  - labels:
+      version: v2
+  httpReqTimeout:
+    simpleTimeout:
+      timeout: 10s
+---
+apiVersion: config.istio.io/v1alpha2
+kind: DestinationPolicy
+metadata:
+  name: helloworld-cb
+spec:
+  destination:
+    name: helloworld
+    labels:
+      version: v1
+  circuitBreaker:
+    simpleCb:
+      maxConnections: 1
+      httpMaxPendingRequests: 1
+      sleepWindow: 3m
+      httpDetectionInterval: 1s
+      httpMaxEjectionPercent: 100
+      httpConsecutiveErrors: 1
+      httpMaxRequestsPerConnection: 1

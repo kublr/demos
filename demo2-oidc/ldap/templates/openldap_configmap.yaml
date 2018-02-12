@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .Release.Name }}-openldap-custom"
+  labels:
+    app: "{{ .Release.Name }}-openldap-custom"
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+data:
+  {{- $files := .Files }}
+  {{range $file := .Values.openldap.bootstrap.files }}
+  {{ $file }}: |
+{{ $files.Get (printf "openldap/%s" $file) | indent 4}}
+  {{- end }}
+

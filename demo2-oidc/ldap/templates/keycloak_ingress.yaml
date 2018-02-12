@@ -1,0 +1,29 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: "{{ .Release.Name }}-keycloak"
+  labels:
+    app: "{{ .Chart.Name }}"
+    heritage: {{.Release.Service | quote }}
+    release: {{.Release.Name | quote }}
+    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    provider: "kublr"
+  annotations:
+    kubernetes.io/tls-acme: "true"
+    #traefik.frontend.passHostHeader: "true"
+    #traefik.protocol: "https"
+spec:
+  tls:
+  - secretName: "tls-{{ .Values.keycloak.hostName }}"
+    hosts:
+    - {{ .Values.keycloak.hostName }}
+  rules:
+  - host: {{ .Values.keycloak.hostName }}
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: "{{ .Release.Name }}-keycloak"
+          servicePort: {{ .Values.keycloak.servicePort }}
+{{- end }}

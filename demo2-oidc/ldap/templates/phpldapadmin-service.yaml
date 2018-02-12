@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Release.Name }}-phpldapadmin"
+  labels:
+    app: "{{ .Release.Name }}-phpldapadmin"
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: {{ .Values.phpldapadmin.service.type }}
+  ports:
+    - port: {{ .Values.phpldapadmin.service.externalPort }}
+      targetPort: {{ .Values.phpldapadmin.service.internalPort }}
+      protocol: TCP
+      name: {{ .Values.phpldapadmin.service.name }}
+  selector:
+    app: "{{ .Release.Name }}-phpldapadmin"
+    release: {{ .Release.Name }}

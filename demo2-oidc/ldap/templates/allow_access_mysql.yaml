@@ -1,0 +1,53 @@
+{{- if .Values.enabled }}
+{{ if eq .Values.mysql.enabled true }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{.Release.Name}}-mysql-init"
+  labels:
+    heritage: {{.Release.Service | quote }}
+    release: {{.Release.Name | quote }}
+    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+  annotations:
+    "helm.sh/hook": post-install
+spec:
+  template:
+    metadata:
+      name: "{{.Release.Name}}"
+      labels:
+        heritage: {{.Release.Service | quote }}
+        release: {{.Release.Name | quote }}
+        chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: post-install-job
+        image: "mysql:{{ .Values.mysql.imageTag }}"
+        env:
+        - name: MYSQL_PWD
+          valueFrom:
+            secretKeyRef:
+              name: "{{ .Release.Name }}-mysql"
+              key: mysql-root-password
+
+        command:
+          - "mysql"
+          - "--user"
+          - "root"
+          - "--host"
+          - "{{ .Release.Name }}-mysql"
+          - "--port"
+          - {{ .Values.mysqlPort | quote }}
+          - "--verbose"
+          - "--execute"
+          - "create database if not exists {{ .Values.mysql.mysqlDatabase }};"
+          - "--execute"
+          - "grant all privileges on {{ .Values.mysql.mysqlDatabase }}.* to {{ .Values.mysql.mysqlUser }}@'%' identified by '{{ .Values.mysql.mysqlPassword }}';"
+          - "--execute"
+          - "grant all privileges on {{ .Values.mysql.mysqlDatabase }}.* to {{ .Values.mysql.mysqlUser }}@'localhost' identified by '{{ .Values.mysql.mysqlPassword }}';"
+          - "--execute"
+          - "grant all privileges on {{ .Values.mysql.mysqlDatabase }}.* to {{ .Values.mysql.mysqlUser }}@'localhost' identified by '{{ .Values.mysql.mysqlPassword }}';"
+          - "--execute"
+          - "select User,Host from mysql.user;"
+{{ end }}
+{{- end }}

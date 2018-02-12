@@ -1,0 +1,23 @@
+# 3. Define groups for LDAP
+
+# 3.1 Posix group use for UNIX based systems
+dn: cn=users,ou=Groups,dc=demo,dc=kublr,dc=com
+objectClass: posixGroup
+description: Test K8S users posixGroup, use for auth and manage in Unix OS
+cn: users
+gidNumber: 5000
+memberUid: test
+
+# 3.2 Groups of Names use for applications
+dn: cn=admins,ou=Groups,dc=demo,dc=kublr,dc=com
+objectClass: groupOfNames
+description: Admins Group of Name use for define groups for application
+cn: admins
+member: uid=admin-user,ou=AppUsers,dc=demo,dc=kublr,dc=com
+
+dn: cn=viewers,ou=Groups,dc=demo,dc=kublr,dc=com
+objectClass: groupOfNames
+description: Viewers Group of Name use for define groups for application
+cn: viewers
+member: uid=read-only,ou=AppUsers,dc=demo,dc=kublr,dc=com
+member: uid=admin-user,ou=AppUsers,dc=demo,dc=kublr,dc=com

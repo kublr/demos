@@ -1,0 +1,136 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: "{{ .Release.Name }}-keycloak"
+  labels:
+    app: "{{ .Chart.Name }}"
+    release: {{.Release.Name | quote }}
+    provider: "kublr"
+spec:
+  serviceName: "{{ .Release.Name }}-keycloak"
+  replicas: {{ .Values.keycloak.replicas }}
+  selector:
+    matchLabels:
+      app: "{{ .Chart.Name }}"
+      release: {{.Release.Name | quote }}
+      provider: "kublr"
+  template:
+    metadata:
+      labels:
+        app: "{{ .Chart.Name }}"
+        release: {{.Release.Name | quote }}
+        provider: "kublr"
+    spec:
+      terminationGracePeriodSeconds: 25
+      restartPolicy: Always
+      initContainers:
+      - name: wait-mysql-pings
+        image: mysql
+        env:
+        - name: MYSQL_HOST
+          value: {{ if eq .Values.mysql.enabled true }}{{ .Release.Name }}-mysql{{ else }}{{ tpl "{{ .Values.keycloak.databaseHost }}" . }}{{ end }}
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}{{ if eq .Values.mysql.enabled true }}-mysql{{ else }}-app-mysql{{ end }}
+              key: mysql-root-password
+        command:
+          - "sh"
+          - "-c"
+          - |
+            set -ex
+
+            TIME=5
+
+            sleep ${TIME}
+            while !(mysqladmin --host=${MYSQL_HOST} --password=${MYSQL_PASSWORD} --connect_timeout=${TIME} ping)
+            do
+               echo "waiting for mysql ${MYSQL_HOST}..."
+               sleep ${TIME}
+            done
+            echo "mysql server ${MYSQL_HOST} has been started"
+      containers:
+      - name: "{{ .Release.Name }}-keycloak"
+        image: {{ .Values.keycloak.image.name }}:{{ .Values.keycloak.image.tag }}
+        imagePullPolicy: {{ default "" .Values.keycloak.imagePullPolicy | quote }}
+        command:
+          - /scripts/keycloak.sh
+#        args:
+## We only need to bind keycloak to a specific pod IP because jgroups cannot bind to wildcard address
+#        - -b
+#        - $(EXTERNAL_IP)
+#        - --server-config
+#        - standalone-ha.xml
+        resources:
+{{ toYaml .Values.keycloak.resources | indent 10 }}
+        env:
+# We only need it because jgroups cannot bind to wildcard address
+        - name: EXTERNAL_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: JAVA_OPTS
+          value: {{ .Values.keycloak.javaOptions }}
+# This is an example of how TCPPING may be configured via JAVA_OPTS
+#   -Dkublr.jgroups.tcpping.initial_hosts={{- $root := . -}}{{- range $i := until 2 -}}{{ template "fullname" $root }}-{{ $i }}.{{ template "fullname" $root }}.{{ $root.Release.Namespace }},{{- end }} -Dkublr.jgroups.tcpping.num_initial_members=1
+# The following extra parameters might be useful if we need to enable keycloak binding to a wildcard address like 0.0.0.0
+#   -Djgroups.bind_addr=${EXTERNAL_IP} -Djgroups.external_addr=${EXTERNAL_IP} -Djboss.qualified.host.name=${FULL_HOST_NAME}
+        - name: KEYCLOAK_LOGLEVEL
+          value: {{ .Values.keycloak.logLevel }}
+        - name: KEYCLOAK_USER
+          value: {{ .Values.keycloak.keycloakUser }}
+        - name: KEYCLOAK_PASSWORD
+          value: {{ .Values.keycloak.keycloakPass }}
+        - name: MYSQL_PORT_3306_TCP_ADDR
+{{- if eq .Values.mysql.enabled true }}
+          value: {{ .Release.Name }}-mysql
+{{- else }}
+          value: {{ tpl "{{ .Values.keycloak.databaseHost }}" . }}
+{{- end }}
+# this is more then a default value, it is the set value of all mysql
+# database servers
+        - name: MYSQL_PORT_3306_TCP_PORT
+          value: {{ .Values.mysql.mysqlPort | quote }}
+        - name: MYSQL_DATABASE
+          value: {{ .Values.mysql.mysqlDatabase }}
+        - name: MYSQL_USERNAME
+          value: {{ .Values.mysql.mysqlUser }}
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}{{ if eq .Values.mysql.enabled true }}-mysql{{ else }}-app-mysql{{ end }}
+              key: mysql-password
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+        ports:
+        - name: http
+          containerPort: {{ .Values.keycloak.containerPort }}
+        - name: jgroups
+          containerPort: 7600
+        - name: jgroups7800
+          containerPort: 7800
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 120
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+{{- end }}
+      volumes:
+        - name: scripts
+          configMap:
+            name: "{{ .Release.Name }}-keycloak"
+            defaultMode: 0755
+    {{- if .Values.keycloak.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.keycloak.imagePullSecrets | indent 8 }}
+    {{- end }}
+

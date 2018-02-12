@@ -1,0 +1,166 @@
+openldap:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: osixia/openldap
+    tag: 1.1.11
+    pullPolicy: IfNotPresent
+  service:
+    name: openldap
+    type: ClusterIP
+    externalPort: 389
+    internalPort: 389
+  ingress:
+    enabled: false
+    # Used to create an Ingress record.
+    hosts:
+      - chart-example.local
+    annotations:
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+    tls:
+      # Secrets must be manually created in the namespace.
+      # - secretName: chart-example-tls
+      #   hosts:
+      #     - chart-example.local
+  resources: {}
+    # limits:
+    #  cpu: 100m
+    #  memory: 128Mi
+    # requests:
+    #  cpu: 100m
+    #  memory: 128Mi
+  bootstrap:
+    files:
+      - '90-users.ldif'
+      - '91-groups.ldif'
+  config:
+    ldap_log_level: "-1"
+    ldap_ogranisation: "Kublr Demo"
+    ldap_domain: "demo.kublr.com"
+    ldap_admin_password: "admin"
+    ldap_config_password: "config"
+    ldap_rfc2307bis_schema: "false"
+    ldap_backend: "hdb"
+    ldap_tls: "false"
+    ldap_replication: "false"
+    keep_existing_config: "false"
+    ldap_remove_config_after_setup: "false"
+  persistence:
+    enabled: false
+    storageClass: "default"
+    accessMode: ReadWriteOnce
+    size: 50Mi
+
+
+phpldapadmin:
+  enabled: true
+  image:
+    repository: osixia/phpldapadmin
+    tag: 0.7.0
+    pullPolicy: IfNotPresent
+  service:
+    name: phpldapadmin
+    type: ClusterIP
+    externalPort: 80
+    internalPort: 80
+  config:
+    phpldapadmin_ldap_hosts: "demo2-openldap"
+    phpldapadmin_server_admin: "admin@demo.kublr.com"
+    phpldapadmin_server_path: "/phpldapadmin"
+    phpldapadmin_https: "false"
+    phpldapadmin_ldap_client_tls: "false"
+
+keycloak:
+  enabled: true
+  replicas: 1
+  image:
+    name: jboss/keycloak
+    tag: 3.4.0.Final
+  imagePullPolicy: IfNotPresent
+  servicePort: 80
+  containerPort: 8080
+
+  # JAVA_OPTS to pass to the JVM.
+  javaOptions: -server -Xms512m -Xmx3072m -Djava.net.preferIPv4Stack=true -Djava.net.preferIPv6Addresses=false
+
+  databaseHost: ""
+
+  keycloakUser: admin
+  keycloakPass: admin
+  backupControllerSecretName: backup-controller-creds
+  clusterControllerSecretName: cluster-controller-creds
+
+  hostName: keycloak.demo.kublr.com
+  baseUrl: https://keycloak.demo.kublr.com
+
+  # Allows to enable or disable auto configuration of keycloak.
+  autoconfigure: false
+
+  # SMTP configuration to propagate for auto-configuration.
+  useEmail: 'false'
+  smtp:
+    host: localhost
+    port: 25
+    from: kublr@localhost
+    fromDisplayName: Kublr
+    useSSL: 'false'
+    useAuth: 'true'
+    user: mail
+    password: mailPassword
+
+  logLevel: DEBUG
+
+  mysqlPort: 3306
+
+  cli:
+    ## Sets the node identifier to the node name (= pod name). Node identifiers have to be unique. They can have a
+    ## maximum length of 23 characters. Thus, the chart's fullname template truncates its length accordingly.
+    nodeIdentifier: |
+      # Makes node identifier unique getting rid of a warning in the logs
+      /subsystem=transactions:write-attribute(name=node-identifier, value=${jboss.node.name})
+    logging: |
+      /subsystem=logging/console-handler=CONSOLE:write-attribute(name=level,value=DEBUG)
+      /subsystem=logging/root-logger=ROOT:write-attribute(name=level,value=DEBUG)
+
+      /subsystem=logging/logger=freemarker.cache:add(level=INFO)
+      /subsystem=logging/logger=javax.activation:add(level=INFO)
+      /subsystem=logging/logger=net:add(level=INFO)
+      /subsystem=logging/logger=org:add(level=INFO)
+      /subsystem=logging/logger=org.hibernate:add(level=INFO)
+      /subsystem=logging/logger=org.jboss.as.clustering.infinispan:add(level=DEBUG)
+      /subsystem=logging/logger=org.jboss.as.server.deployment:add(level=INFO)
+      /subsystem=logging/logger=org.jboss.jca.core.connectionmanager.pool:add(level=INFO)
+      /subsystem=logging/logger=org.jboss.modules:add(level=INFO)
+      /subsystem=logging/logger=org.jgroups:add(level=DEBUG)
+      /subsystem=logging/logger=org.infinispan:add(level=DEBUG)
+    reverseProxy: |
+      /socket-binding-group=standard-sockets/socket-binding=proxy-https:add(port=443)
+      /subsystem=undertow/server=default-server/http-listener=default:write-attribute(name=redirect-socket,value=proxy-https)
+      /subsystem=undertow/server=default-server/http-listener=default:write-attribute(name=proxy-address-forwarding,value=true)
+
+      /interface=any:add(any-address=true)
+
+      /socket-binding-group=standard-sockets/socket-binding=http:write-attribute(name=interface,value=any)
+      /socket-binding-group=standard-sockets/socket-binding=https:write-attribute(name=interface,value=any)
+    discovery: ""
+    custom: ""
+
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4096Mi
+    requests:
+      cpu: 300m
+      memory: 512Mi
+
+mysql:
+  enabled: true
+  imageTag: "5.7.17"
+  mysqlRootPassword: testing
+  imagePullPolicy: IfNotPresent
+  mysqlDatabase: keycloak
+  mysqlUser: keycloak
+  mysqlPassword: keycloak
+  mysqlPort: 3306
+

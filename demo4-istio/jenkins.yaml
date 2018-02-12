@@ -1,0 +1,30 @@
+Master:
+  ImageTag: 2.105-slim
+  AdminPassword: admin
+  ScriptApproval:
+    - method groovy.json.JsonBuilder toPrettyString
+    - method hudson.model.Actionable getAction java.lang.Class
+    - method hudson.model.Cause$UserIdCause getUserId
+    - method hudson.model.Run getCause java.lang.Class
+    - method hudson.model.User getProperty java.lang.Class
+    - method hudson.tasks.Mailer$UserProperty getAddress
+    - method hudson.tasks.test.AbstractTestResultAction getFailCount
+    - method hudson.tasks.test.AbstractTestResultAction getSkipCount
+    - method hudson.tasks.test.AbstractTestResultAction getTotalCount
+    - method org.jenkinsci.plugins.workflow.support.steps.build.RunWrapper getRawBuild
+    - new groovy.json.JsonBuilder java.lang.Object
+    - staticMethod hudson.model.User get java.lang.String
+    - staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods getAt java.lang.Object java.lang.String
+    - staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods getProperties java.lang.Object
+    - staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods normalize java.lang.String
+    - staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods putAt java.lang.Object java.lang.String java.lang.Object
+  InstallPlugins:
+    - kubernetes:latest
+    - workflow-aggregator:latest
+    - workflow-job:latest
+    - credentials-binding:latest
+    - git:latest
+    - locale:latest
+    - greenballs:latest
+Agent:
+  ImageTag: 3.16-1

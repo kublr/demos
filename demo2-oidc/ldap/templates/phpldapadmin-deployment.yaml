@@ -1,0 +1,37 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: "{{ .Release.Name }}-phpldapadmin"
+  labels:
+    app: "phpldapadmin"
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: "{{ .Release.Name }}-phpldapadmin"
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: "{{ .Chart.Name }}-phpldapadmin"
+          image: "{{ .Values.phpldapadmin.image.repository}}:{{ .Values.phpldapadmin.image.tag }}"
+          ports:
+            - containerPort: {{ .Values.phpldapadmin.service.internalPort }}
+          env:
+            - name: PHPLDAPADMIN_LDAP_HOSTS
+              value: {{ .Values.phpldapadmin.config.phpldapadmin_ldap_hosts | quote }}
+            - name: PHPLDAPADMIN_SERVER_ADMIN
+              value: {{ .Values.phpldapadmin.config.phpldapadmin_server_admin | quote }}
+            - name: PHPLDAPADMIN_SERVER_PATH
+              value: {{ .Values.phpldapadmin.config.phpldapadmin_server_path | quote }}
+            - name: PHPLDAPADMIN_HTTPS
+              value: {{ .Values.phpldapadmin.config.phpldapadmin_https | quote }}
+            - name: PHPLDAPADMIN_LDAP_CLIENT_TLS
+              value: {{ .Values.phpldapadmin.config.phpldapadmin_ldap_client_tls | quote }}
+    {{- if .Values.phpldapadmin.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.phpldapadmin.nodeSelector | indent 8 }}
+    {{- end }}

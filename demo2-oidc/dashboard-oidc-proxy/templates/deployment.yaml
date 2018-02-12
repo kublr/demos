@@ -1,0 +1,54 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}
+  namespace: kube-system
+  labels:
+    app: {{ template "name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --discovery-url={{ printf "%s/auth/realms/%s" .Values.config.oidc_server.url .Values.config.realm }}
+            - --skip-openid-provider-tls-verify={{ .Values.config.oidc_server.skip_tls_verify }}
+            - --client-id={{ .Values.config.client_id }}
+            - --client-secret={{ .Values.config.client_secret }}
+            - --listen=0.0.0.0:{{ .Values.service.internalPort }}
+            - --enable-logging={{ .Values.config.logging.enabled }}
+            - --enable-json-logging={{ .Values.config.logging.json }}
+            - --verbose={{ .Values.config.verbose }}
+            - --upstream-url={{.Values.config.upstream }}
+            - --resources={{ .Values.config.resources }}
+            - --enable-metrics={{ .Values.config.metrics.enabled }}
+            - --forbidden-page=/opt/templates/forbidden.html.tmpl
+          ports:
+            - containerPort: {{ .Values.service.internalPort }}
+#          livenessProbe:
+#            httpGet:
+#              path: /
+#              port: {{ .Values.service.internalPort }}
+#          readinessProbe:
+#            httpGet:
+#              path: /
+#              port: {{ .Values.service.internalPort }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}
