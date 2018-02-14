@@ -13,7 +13,7 @@ docker run --rm \
     -v ~/.aws:/.aws \
     -u "$(id -u)" \
     -e HOME=/ \
-    cr.kublr.com/kublr/gen:1.8.0 -f /gen/.cluster-config.yaml -o /gen-out
+    cr.kublr.com/kublr/gen:1.8.0 -f /gen/cluster-config.yaml -o /gen-out
     
 cd gen-out
 bash bash aws-cluster-demo3-aws1.sh
