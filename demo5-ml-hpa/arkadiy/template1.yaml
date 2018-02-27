@@ -1,0 +1,818 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Kubernetes cluster cloud formation template
+Parameters:
+  KubernetesCluster:
+    Description: Kubernetes cluster name
+    Type: String
+    Default: 'qb-poc-nfs-as-5'
+  ExistingVpcId:
+    Description: Id of VPC to use. If empty ? new VPC will be created.
+    Type: String
+    Default: ''
+    ConstraintDescription: must be a valid VPC id.
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: String
+    Default: ''
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  RegisterMasterKubelet:
+    Description: >-
+      Set to 'true' if pods can be started on master, 'cordoned' if master
+      should be registered but cordoned initially, and 'false' if master kubelet
+      should not be registered
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'cordoned'
+      - 'false'
+  Master0EbsSnapshot:
+    Description: 'SnapshotId to create the data volume from (may be useful for disaster recovery)'
+    Type: String
+    Default: ''
+  ImageId:
+    Description: AMI to use for cluster setup (by default AMI is selected based on region)
+    Type: String
+    Default: ''
+  ImageRootDeviceName:
+    Description: Root device name for instances; must correspond to the AMI
+    Type: String
+    Default: /dev/sda1
+    AllowedValues:
+      - /dev/sda1
+      - /dev/xvda
+Conditions:
+  UseCustomTemplateImage:
+    !Not
+      - !Equals
+          - !Ref ImageId
+          - ''
+  UseCustomKeyName:
+    !Not
+      - !Equals
+          - !Ref KeyName
+          - ''
+  RegionUSEast1:
+    !Equals
+      - !Ref 'AWS::Region'
+      - us-east-1
+  NeedNewVPC:
+    !Equals
+      - !Ref ExistingVpcId
+      - ''
+  UseExistingVPC:
+    !Not
+      - !Equals
+        - !Ref ExistingVpcId
+        - ''
+Metadata:
+  Kublr:
+    Generator:
+      VersionInfo:
+        Version: '1.8.1-develop.284'
+        BuildNumber: '284'
+        BuildDate: '2018-01-28T17:14:05Z'
+        BuildGitCommit: 'e18b6e2359aa529c35bcc51e35445c57ff982cc3'
+        BuildGitBranch: 'develop'
+        BuildGitTreeState: 'clean'
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Cluster
+        Parameters:
+          - KubernetesCluster
+          - KeyName
+      - Label:
+          default: Advanced
+        Parameters:
+          - ImageId
+          - ImageRootDeviceName
+          - Master0EbsSnapshot
+          - RegisterMasterKubelet
+    ParameterLabels:
+      KeyName:
+        default: SSH key for instance access
+Resources:
+  NewVpc:
+    Condition: NeedNewVPC
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: '172.16.0.0/16'
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-vpc'
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+  VpcDhcpOptions:
+    Condition: NeedNewVPC
+    Type: 'AWS::EC2::DHCPOptions'
+    Properties:
+      DomainName:
+        !Join
+          - ' '
+          - - !If
+                - RegionUSEast1
+                - ec2.internal
+                - !Sub '${AWS::Region}.compute.internal'
+             #- default.svc.cluster.local
+             #- svc.cluster.local
+      DomainNameServers:
+        - !Sub '100.64.0.10,AmazonProvidedDNS'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-dhcp-options'
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+  VpcDhcpOptionsAssociation:
+    Condition: NeedNewVPC
+    Type: 'AWS::EC2::VPCDHCPOptionsAssociation'
+    Properties:
+      VpcId: !If [NeedNewVPC, !Ref NewVpc, !Ref ExistingVpcId]
+      DhcpOptionsId: !Ref VpcDhcpOptions
+  Gw:
+    Condition: NeedNewVPC
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-igw'
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+  VpcGwAttachment:
+    Condition: NeedNewVPC
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      InternetGatewayId: !Ref Gw
+      VpcId: !If [NeedNewVPC, !Ref NewVpc, !Ref ExistingVpcId]
+  RouteTablePublic:
+    Type: 'AWS::EC2::RouteTable'
+    Condition: NeedNewVPC
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-rt'
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+      VpcId: !If [NeedNewVPC, !Ref NewVpc, !Ref ExistingVpcId]
+  RouteToInternet:
+    Type: 'AWS::EC2::Route'
+    Condition: NeedNewVPC
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref Gw
+      RouteTableId: !Ref RouteTablePublic
+    DependsOn: VpcGwAttachment
+  SubnetMasterPublic3:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'us-east-1d'
+      CidrBlock: '172.16.8.0/23'
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-subnet-master-public-3'
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+      VpcId: !If [NeedNewVPC, !Ref NewVpc, !Ref ExistingVpcId]
+  RtAssocSubnetMasterPublic3:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Condition: NeedNewVPC
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetMasterPublic3
+  SubnetNodePublic3:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'us-east-1d'
+      CidrBlock: '172.16.64.0/20'
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-subnet-node-public-3'
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+      VpcId: !If [NeedNewVPC, !Ref NewVpc, !Ref ExistingVpcId]
+  RtAssocSubnetNodePublic3:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Condition: NeedNewVPC
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetNodePublic3
+  SubnetNodePublic4:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'us-east-1e'
+      CidrBlock: '172.16.80.0/20'
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-subnet-node-public-4'
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+      VpcId: !If [NeedNewVPC, !Ref NewVpc, !Ref ExistingVpcId]
+  RtAssocSubnetNodePublic4:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Condition: NeedNewVPC
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetNodePublic4
+  SubnetNodePublic5:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'us-east-1f'
+      CidrBlock: '172.16.96.0/20'
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-subnet-node-public-5'
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+      VpcId: !If [NeedNewVPC, !Ref NewVpc, !Ref ExistingVpcId]
+  RtAssocSubnetNodePublic5:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Condition: NeedNewVPC
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetNodePublic5
+  LogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '${AWS::StackName}-log-group'
+      RetentionInDays: 30
+  SecretExchangeBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: 'qb-poc-nfs-as-5-secrets-lodkmhou6q1e'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-secret-exchange-bucket'
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+  SecretExchangeBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref SecretExchangeBucket
+      PolicyDocument:
+        Statement:
+          - Action: '*'
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:s3:::${SecretExchangeBucket}'
+              - !Sub 'arn:aws:s3:::${SecretExchangeBucket}/*'
+            Principal:
+              AWS:
+                - !GetAtt [RoleMaster, Arn]
+                - !GetAtt [RoleNode, Arn]
+  SecretExchangeBucketVpcEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Condition: NeedNewVPC
+    Properties:
+      RouteTableIds:
+        - !Ref RouteTablePublic
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcId: !If [NeedNewVPC, !Ref NewVpc, !Ref ExistingVpcId]
+  DefaultSecurityGroupForExistingVPC:
+    Type: AWS::EC2::SecurityGroup
+    Condition: UseExistingVPC
+    Properties:
+      GroupDescription: !Ref 'AWS::StackName'
+      VpcId: !Ref ExistingVpcId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-sg-default-existing-vpc'
+# private master ELB and ELB SecurityGroup
+# public master ELB and ELB SecurityGroup
+# Role, Profile and SecurityGroup for masters
+  RoleMaster:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 's3:*'
+                Resource:
+                  - 'arn:aws:s3:::qb-poc-nfs-as-5-secrets-lodkmhou6q1e'
+                  - 'arn:aws:s3:::qb-poc-nfs-as-5-secrets-lodkmhou6q1e/*'
+              - Effect: Allow
+                Action:
+                  - 'ec2:*'
+                  - 'elasticloadbalancing:*'
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:GetRepositoryPolicy'
+                  - 'ecr:DescribeRepositories'
+                  - 'ecr:ListImages'
+                  - 'ecr:BatchGetImage'
+                  - 'autoscaling:DescribeTags'
+                  - 'autoscaling:DescribeAutoScalingGroups'
+                  - 'autoscaling:DescribeAutoScalingInstances'
+                  - 'autoscaling:SetDesiredCapacity'
+                  - 'autoscaling:TerminateInstanceInAutoScalingGroup'
+                  - 'rds:DescribeDBInstances'
+                  - 'cloudformation:DescribeStackResources'
+                  - 'cloudformation:DescribeStacks'
+                Resource: '*'
+        - PolicyName: LogRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:*'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${LogGroup}:*'
+              - Effect: Allow
+                Action:
+                  - 'logs:DescribeLogGroups'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group::log-stream:'
+  ProfileMaster:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref RoleMaster
+    DependsOn:
+      - RoleMaster
+  SgMaster:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: !Ref 'AWS::StackName'
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 0
+          IpProtocol: -1
+          ToPort: 65535
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+        - CidrIp: 0.0.0.0/0
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+        - CidrIp: 0.0.0.0/0
+          FromPort: 30000
+          IpProtocol: tcp
+          ToPort: 32767
+        - CidrIp: 0.0.0.0/0
+          FromPort: 30000
+          IpProtocol: udp
+          ToPort: 32767
+        - CidrIp: 172.16.0.0/16
+          FromPort: 0
+          IpProtocol: -1
+          ToPort: 65535
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-sg-master'
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+        - Key: k8s.io/role/master
+          Value: 1
+      VpcId: !If [NeedNewVPC, !Ref NewVpc, !Ref ExistingVpcId]
+# Role, Profile and SecurityGroup for nodes
+  RoleNode:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 's3:*'
+                Resource:
+                  - 'arn:aws:s3:::qb-poc-nfs-as-5-secrets-lodkmhou6q1e'
+                  - 'arn:aws:s3:::qb-poc-nfs-as-5-secrets-lodkmhou6q1e/*'
+              - Effect: Allow
+                Action:
+                  - 'ec2:Describe*'
+                  - 'ec2:CreateSnapshot'
+                  - 'ec2:CreateTags'
+                  - 'ec2:DeleteSnapshot'
+                  - 'ec2:AttachVolume'
+                  - 'ec2:DetachVolume'
+                  - 'ec2:AssociateAddress'
+                  - 'ec2:DisassociateAddress'
+                  - 'ec2:ModifyInstanceAttribute'
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:GetRepositoryPolicy'
+                  - 'ecr:DescribeRepositories'
+                  - 'ecr:ListImages'
+                  - 'ecr:BatchGetImage'
+                  - 'autoscaling:DescribeTags'
+                  - 'autoscaling:DescribeAutoScalingGroups'
+                  - 'autoscaling:DescribeAutoScalingInstances'
+                  - 'autoscaling:SetDesiredCapacity'
+                  - 'autoscaling:TerminateInstanceInAutoScalingGroup'
+                  - 'rds:DescribeDBInstances'
+                  - 'cloudformation:DescribeStackResources'
+                  - 'cloudformation:DescribeStacks'
+                Resource: '*'
+        - PolicyName: LogRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:*'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${LogGroup}:*'
+              - Effect: Allow
+                Action:
+                  - 'logs:DescribeLogGroups'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group::log-stream:'
+  ProfileNode:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref RoleNode
+    DependsOn:
+      - RoleNode
+  SgNode:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: !Ref 'AWS::StackName'
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 0
+          IpProtocol: -1
+          ToPort: 65535
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+        - CidrIp: 0.0.0.0/0
+          FromPort: 30000
+          IpProtocol: tcp
+          ToPort: 32767
+        - CidrIp: 0.0.0.0/0
+          FromPort: 30000
+          IpProtocol: udp
+          ToPort: 32767
+        - CidrIp: 172.16.0.0/16
+          FromPort: 0
+          IpProtocol: -1
+          ToPort: 65535
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-sg-node'
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+        - Key: k8s.io/role/node
+          Value: 1
+      VpcId: !If [NeedNewVPC, !Ref NewVpc, !Ref ExistingVpcId]
+# EIP for stateful groups
+  EIPmaster0:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+    DependsOn: VpcGwAttachment
+# EBS for masters
+  Master0EBS:
+    Type: 'AWS::EC2::Volume'
+    Properties:
+      Size: 15
+      VolumeType: gp2
+      Tags:
+        - Key: Name
+          Value: !Sub '${KubernetesCluster}-vol-master'
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+        - Key: 'kublr.io/node-ordinal'
+          Value: '0'
+        - Key: k8s.io/role/master
+          Value: 1
+      SnapshotId: !Ref Master0EbsSnapshot
+      AvailabilityZone: 'us-east-1d'
+# LaunchConfiguration and ASG for all instances
+  LCmaster:
+    Type: 'AWS::AutoScaling::LaunchConfiguration'
+    Properties:
+      BlockDeviceMappings:
+        - DeviceName:
+            !If
+              - UseCustomTemplateImage
+              - !Ref ImageRootDeviceName
+              - '/dev/sda1'
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 15
+      IamInstanceProfile: !Ref ProfileMaster
+      ImageId:
+        !If
+          - UseCustomTemplateImage
+          - !Ref ImageId
+          - 'ami-f448718e'
+      InstanceType: 't2.large'
+      KeyName:
+        !If
+          - UseCustomKeyName
+          - !Ref KeyName
+          - 'dev-atamanenko'
+      SecurityGroups:
+        - !If
+          - UseExistingVPC
+          - !Ref DefaultSecurityGroupForExistingVPC
+          - !GetAtt [NewVpc, DefaultSecurityGroup]
+        - !GetAtt
+          - SgMaster
+          - GroupId
+      AssociatePublicIpAddress: true
+      UserData:
+        !Base64
+          'Fn::Sub':
+            - |
+              #!/bin/bash -xe
+              mkdir -p /etc/kubernetes /etc/kublr
+              cat > /etc/kublr/daemon.yaml <<EOF
+              cluster:
+                name: '${KubernetesCluster}'
+                network:
+                  clusterCIDR: 100.64.0.0/10
+                  dnsDomain: cluster.local
+                  dnsIP: 100.64.0.10
+                  masterIP: 100.64.0.1
+                  podCIDR: 100.96.0.0/11
+                  provider: cni-canal
+                  serviceCIDR: 100.64.0.0/13
+              etcd_addresses:
+                priority_group_1:
+                  - 172.16.8.4
+              is_master: true
+              kublr:
+                kubelet_flag:
+                  cloud_provider: '--cloud-provider=aws'
+                kube_api_server_flag:
+                  requestheader_client_ca_file: '--requestheader-client-ca-file=/srv/kubernetes/current/ca.crt'
+                  requestheader_extra_headers_prefix: '--requestheader-extra-headers-prefix=X-Remote-Extra'
+                  requestheader_allowed_names:
+                    flag: '--requestheader-allowed-names='
+                    values:
+                      aggregator:
+                        value: aggregator
+                        order: '010'
+                  requestheader_group_headers:
+                    flag: '--requestheader-group-headers='
+                    values:
+                      x_remote_group:
+                        value: X-Remote-Group
+                        order: '010'
+                  requestheader_username_headers:
+                    flag: '--requestheader-username-headers='
+                    values:
+                      x_remote_user:
+                        value: X-Remote-User
+                        order: '010'
+                  cloud_provider: '--cloud-provider=aws'
+                  external_hostname: '--external-hostname=${EIPmaster0}'
+                kube_controller_manager_flag:
+                  horizontal_pod_autoscaler_use_rest_clients: '--horizontal-pod-autoscaler-use-rest-clients=true'
+                  cloud_provider: '--cloud-provider=aws'
+              kublr_cloud_provider:
+                type: aws
+              master_addresses:
+                priority_group_400_Private_IPs:
+                  - 172.16.8.4
+                priority_group_500_EIP:
+                  - '${EIPmaster0}'
+                priority_group_100_Self:
+                  - 127.0.0.1
+              node_group: master
+              register_kubelet: '${RegisterMasterKubelet}'
+              secret_provider:
+                s3:
+                  bucket_name: qb-poc-nfs-as-5-secrets-lodkmhou6q1e
+                type: s3
+              cluster_autoscaler:
+                aws_region: '${AWS::Region}'
+                nodes:
+                  - '3:5:${ASGdefault}'
+              etcd_addresses_all:
+                - 172.16.8.4
+              etcd_addresses_initial:
+                - 172.16.8.4
+              etcd_storage:
+                aws:
+                  encrypted: false
+                  size_gb: 15
+                  type: gp2
+              master_addresses_all:
+                - '${EIPmaster0}'
+                - 172.16.8.4
+                - 127.0.0.1
+              master_number: 1
+
+
+              EOF
+            - Placeholder: ""
+  ASGmaster0:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      AvailabilityZones:
+        - 'us-east-1d'
+      HealthCheckGracePeriod: 300
+      HealthCheckType: EC2
+      LaunchConfigurationName: !Ref LCmaster
+      MinSize: 1
+      MaxSize: 1
+      TargetGroupARNs: [
+]
+      LoadBalancerNames: [
+]
+      VPCZoneIdentifier:
+        - !Ref SubnetMasterPublic3
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-master-0'
+          PropagateAtLaunch: true
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+          PropagateAtLaunch: true
+        - Key: 'kublr.io/node-group'
+          Value: 'master'
+          PropagateAtLaunch: true
+        - Key: 'kublr.io/node-ordinal'
+          Value: '0'
+          PropagateAtLaunch: true
+        - Key: 'kublr.io/eip'
+          Value: !Ref EIPmaster0
+          PropagateAtLaunch: true
+        - Key: k8s.io/role/master
+          Value: 1
+          PropagateAtLaunch: true
+        - Key: 'kublr.io/secondary-ip'
+          Value: '172.16.8.4'
+          PropagateAtLaunch: true
+    DependsOn:
+      - Master0EBS
+  LCdefault:
+    Type: 'AWS::AutoScaling::LaunchConfiguration'
+    Properties:
+      BlockDeviceMappings:
+        - DeviceName:
+            !If
+              - UseCustomTemplateImage
+              - !Ref ImageRootDeviceName
+              - '/dev/sda1'
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 15
+      IamInstanceProfile: !Ref ProfileNode
+      ImageId:
+        !If
+          - UseCustomTemplateImage
+          - !Ref ImageId
+          - 'ami-f448718e'
+      InstanceType: 'm4.large'
+      KeyName:
+        !If
+          - UseCustomKeyName
+          - !Ref KeyName
+          - 'dev-atamanenko'
+      SecurityGroups:
+        - !If
+          - UseExistingVPC
+          - !Ref DefaultSecurityGroupForExistingVPC
+          - !GetAtt [NewVpc, DefaultSecurityGroup]
+        - !GetAtt
+          - SgNode
+          - GroupId
+      AssociatePublicIpAddress: true
+      UserData:
+        !Base64
+          'Fn::Sub':
+            - |
+              #!/bin/bash -xe
+              mkdir -p /etc/kubernetes /etc/kublr
+              cat > /etc/kublr/daemon.yaml <<EOF
+              cluster:
+                name: '${KubernetesCluster}'
+                network:
+                  clusterCIDR: 100.64.0.0/10
+                  dnsDomain: cluster.local
+                  dnsIP: 100.64.0.10
+                  masterIP: 100.64.0.1
+                  podCIDR: 100.96.0.0/11
+                  provider: cni-canal
+                  serviceCIDR: 100.64.0.0/13
+              etcd_addresses:
+                priority_group_1:
+                  - 172.16.8.4
+              is_master: false
+              kublr:
+                kubelet_flag:
+                  cloud_provider: '--cloud-provider=aws'
+              kublr_cloud_provider:
+                type: aws
+              master_addresses:
+                priority_group_400_Private_IPs:
+                  - 172.16.8.4
+                priority_group_500_EIP:
+                  - '${EIPmaster0}'
+              node_group: default
+              register_kubelet: 'true'
+              secret_provider:
+                s3:
+                  bucket_name: qb-poc-nfs-as-5-secrets-lodkmhou6q1e
+                type: s3
+
+
+              EOF
+            - Placeholder: ""
+  ASGdefault:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      AvailabilityZones:
+        - 'us-east-1d'
+        - 'us-east-1e'
+        - 'us-east-1f'
+      HealthCheckGracePeriod: 300
+      HealthCheckType: EC2
+      LaunchConfigurationName: !Ref LCdefault
+      MinSize: 3
+      MaxSize: 5
+      TargetGroupARNs: [
+]
+      LoadBalancerNames: [
+]
+      VPCZoneIdentifier:
+        - !Ref SubnetNodePublic3
+        - !Ref SubnetNodePublic4
+        - !Ref SubnetNodePublic5
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-default'
+          PropagateAtLaunch: true
+        - Key: KubernetesCluster
+          Value: !Ref KubernetesCluster
+          PropagateAtLaunch: true
+        - Key: 'kublr.io/node-group'
+          Value: 'default'
+          PropagateAtLaunch: true
+        - Key: k8s.io/role/node
+          Value: 1
+          PropagateAtLaunch: true
+Outputs:
+  APIEndpoint:
+    Description: Main K8S API endpoint
+    Value:
+      'Fn::Sub':
+        - |
+          https://${EIPmaster0}
+        - Placeholder: ""
+  APIEndpoints:
+    Description: K8S API endpoints
+    Value:
+      'Fn::Sub':
+        - |
+          https://${EIPmaster0}
+          https://172.16.8.4
+        - Placeholder: ""
+  SecretExchangeBucketName:
+    Description: Name of S3 bucket to hold K8S cluster secrets
+    Value: !Ref SecretExchangeBucket

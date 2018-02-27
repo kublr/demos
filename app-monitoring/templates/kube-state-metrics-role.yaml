@@ -1,0 +1,21 @@
+{{ if not .Values.kubestatemetrics.useDefaultServiceAccount -}}
+apiVersion: rbac.authorization.k8s.io/v1{{- if semverCompare "<= 1.7" ( printf "%s.%s" .Capabilities.KubeVersion.Major .Capabilities.KubeVersion.Minor ) }}beta1{{ end }}
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-kube-state-metrics-resizer
+  labels:
+    app: '{{ .Release.Name }}-kube-state-metrics'
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+rules:
+- apiGroups: [""]
+  resources:
+  - pods
+  verbs: ["get"]
+- apiGroups: ["extensions"]
+  resources:
+  - deployments
+  resourceNames: ["{{ .Release.Name }}-kube-state-metrics"]
+  verbs: ["get", "update"]
+{{- end }}

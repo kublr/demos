@@ -1,0 +1,9 @@
+cloudwatch:
+  enabled: false
+  logGroupName: aegorov-istio-aws1-log-group
+  region: us-west-1
+elasticsearch:
+  enabled: false
+  persistence:
+    enabled: false
+    size: 128Gi

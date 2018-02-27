@@ -1,0 +1,36 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: monitoring-prometheus-rabbitmq
+  namespace: default
+  labels:
+    app: monitoring-prometheus-rabbitmq
+spec:
+  template:
+    metadata:
+      labels:
+        app: monitoring-rabbitmq
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9090'
+    spec:
+      containers:
+      - name: rabbitmq-exporter
+        image: kbudde/rabbitmq-exporter
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: 10m
+            memory: 20Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        env:
+        - name: RABBIT_URL
+          value: "http://rabbitmq:15672"
+        - name: RABBIT_USER
+          value: "rabittADMIn"
+        - name: RABBIT_PASSWORD
+          value: "SwordInPlainTexts"
+        ports:
+        - containerPort: 9090

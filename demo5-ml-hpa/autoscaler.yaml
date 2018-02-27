@@ -1,0 +1,32 @@
+kind: HorizontalPodAutoscaler
+apiVersion: autoscaling/v2beta1
+metadata:
+  name: rabbitmq-consumer-hpa
+spec:
+  scaleTargetRef:
+    # point the HPA at the sample application
+    # you created above
+    apiVersion: apps/v1beta1
+    kind: Deployment
+    name: test-rabbitmq-consumer
+  # autoscale between 1 and 10 replicas
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  # use a "Pods" metric, which takes the average of the
+  # given metric across all pods controlled by the autoscaling target
+  - type: Pods
+    pods:
+      # use the metric that you used above: pods/http_requests
+      metricName: rabbitmq_queue_messages
+      # target 500 milli-requests per second,
+      # which is 1 request every two seconds
+      targetAverageValue: 10
+#  metrics:
+#  - type: Object
+#    object:
+#      target:
+#        kind: Service
+#        name: ?????
+#      metricName: rabbitmq_queue_messages
+#      targetValue: 100

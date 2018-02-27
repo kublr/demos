@@ -19,7 +19,7 @@ ENV APP_VERSION $VERSION
 ENV IMAGE_BUILD_DATE $BUILD_DATE
 
 WORKDIR /app
-ADD ./target/smackweb /app/
+ADD target/smackweb /app/
 
 RUN chmod +x /app/smackweb
 

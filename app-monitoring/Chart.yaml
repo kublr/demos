@@ -1,0 +1,17 @@
+apiVersion: v1
+description: A Helm chart for Kublr advanced mointoring component
+name: app-monitoring
+version: 0.2.0-prEDS1803.2
+keywords:
+- kublr
+- monitoring
+home: https://kublr.com
+sources:
+- https://kublr.com
+maintainers:
+- name: oleg.atamanenko
+  email: oatamanenko@eastbanctech.com
+- name: oleg.chunikhin
+  email: oleg@kublr.com
+engine: gotpl
+icon: http://kublr.com/images/logo_kublr_cube.png

@@ -1,0 +1,404 @@
+groups:
+- name: main
+  rules:
+  - alert: HighErrorRate
+    expr: job:request_latency_seconds:mean5m{job="myjob"} > 0.5
+    for: 10m
+    labels:
+      severity: page
+    annotations:
+      summary: High request latency
+
+  - alert: instanceDiskSpaceFreeLow
+    expr: container_fs_usage_bytes{job="kubernetes-nodes",id="/"} / on(instance,device) container_fs_limit_bytes{job="kubernetes-nodes",id="/"} > 0.90
+    for: 10m
+    labels:
+      service: disk
+    annotations:
+      summary: "High disk space usage on {{ $labels.instance }}:{{ $labels.device }}"
+      description: "Device {{ $labels.device }} on instance {{ $labels.instance }} has little space left for over 10m"
+
+
+  - alert: instanceDiskInodesFreeLow
+    expr: container_fs_inodes_free{job="kubernetes-nodes",id="/"} / on(instance,device) container_fs_inodes_total{job="kubernetes-nodes",id="/"} < 0.15
+    for: 10m
+    labels:
+      service: "disk"
+    annotations:
+      summary: "High disk inodes usage on {{ $labels.instance }}:{{ $labels.device }}"
+      description: "Device {{ $labels.device }} on instance {{ $labels.instance }} has few inodes left for over 10m"
+
+
+  - alert: instanceDown
+    expr: up{job="kubernetes-nodes"} == 0
+    for: 1m
+    labels:
+      service: node
+    annotations:
+      summary: "Instance {{ $labels.instance }} is down"
+      description: "Instance {{ $labels.instance }} is down for over 1m"
+
+
+  - alert: k8sApiServerDown
+    expr: up{job="kubernetes-apiservers"} == 0
+    for: 1m
+    labels:
+      service: apiServer
+    annotations:
+      summary: "Kubernetes API server is down"
+      description: "Kubernetes API server is down for over 1m"
+
+
+  - alert: instanceSwapUsageHigh
+    expr: container_memory_swap{job="kubernetes-nodes",id="/"} > 0
+    labels:
+      service: node
+    annotations:
+      summary: "Swap usage on instance {{ $labels.instance }}"
+      description: "Swap usage is not recommended on instance {{ $labels.instance }}"
+
+
+  - alert: instanceMemoryUsageHigh
+    expr: container_memory_usage_bytes{id="/"} / on (instance) machine_memory_bytes > 0.95
+    for: 5m
+    labels:
+      service: node
+    annotations:
+      summary: "Memory usage on instance {{ $labels.instance }}"
+      description: "Memory usage on instance {{ $labels.instance }} is higher than 95% for 5m"
+
+
+  - alert: clusterMemoryUsageHigh
+    expr: sum(container_memory_usage_bytes{id="/"}) / sum(machine_memory_bytes) > 0.90
+    for: 5m
+    labels:
+      service: cluster
+    annotations:
+      summary: "Memory usage on the cluster high"
+      description: "Memory usage on the cluster is higher than 90% for 5m"
+
+
+  - alert: clusterMemoryUsageLow
+    expr: sum(container_memory_usage_bytes{id="/"}) / sum(machine_memory_bytes) < 0.6
+    for: 5m
+    labels:
+      service: cluster
+    annotations:
+      summary: "Memory usage on the cluster low"
+      description: "Memory usage on the cluster is lower than 60% for 5m"
+
+
+  - alert: kubeletDockerOperationErrors
+    expr: rate(kubelet_docker_operations_errors[3m]) > 0
+    for: 5m
+    labels:
+      service: docker
+    annotations:
+      summary: "Docker operation {{ $labels.operation_type }} error rate is heightened"
+      description: "Docker operation {{ $labels.operation_type }} error rate is heightened on instance {{ $labels.instance }} over last 10m"
+
+
+  - alert: instanceCpuUsageHigh
+    expr: sum(rate(container_cpu_usage_seconds_total{id="/"}[3m])) by (instance) / on(instance) sum(machine_cpu_cores) by (instance) > 0.8
+    for: 8m
+    labels:
+      service: node
+    annotations:
+      summary: "CPU usage on instance {{ $labels.instance }}"
+      description: "CPU usage on instance {{ $labels.instance }} is higher than 80% for 8m"
+
+
+  - alert: clusterCpuUsageHigh
+    expr: sum(rate(container_cpu_usage_seconds_total{id="/"}[3m])) / sum(machine_cpu_cores) > 0.8
+    for: 8m
+    labels:
+      service: cluster
+    annotations:
+      summary: "CPU usage on instance {{ $labels.instance }}"
+      description: "CPU usage on instance {{ $labels.instance }} is higher than 80% for 8m"
+
+
+# This is commented out because many containers use all memory available for them and it is not considered a problem
+#  - alert: containerMemoryUsageHigh
+#  IF
+#    container_memory_usage_bytes{container_name!=""}
+#      / on (instance, namespace, pod_name, container_name)
+#      (container_spec_memory_limit_bytes{container_name!=""}
+#        and container_spec_memory_limit_bytes{container_name!=""} > 0) > 0.90
+#    for: 1m
+#    labels:
+      service: container
+#    annotations:
+#      summary: "Container memory usage {{ $labels.instance }} / {{ $labels.namespace }} / {{ $labels.pod_name }} / {{ $labels.container_name }}"
+#      description: "Container memory usage {{ $labels.instance }} / {{ $labels.namespace }} / {{ $labels.pod_name }} / {{ $labels.container_name }} is higher than 90% for 1m"
+#
+
+# Node status
+
+  - alert: nodeStatusNotReady
+    expr: kube_node_status_ready{condition!="true"} > 0
+    for: 7m
+    labels:
+      service: node
+    annotations:
+      summary: "Node {{ $labels.node }} status is not ready"
+      description: "Node {{ $labels.node }} status is not ready for 7m. Condition is {{ $labels.condition }}"
+
+
+  - alert: nodeStatusNotReady1
+    expr: kube_node_status_condition{condition="Ready",status!="true"} > 0
+    for: 7m
+    labels:
+      service: node
+    annotations:
+      summary: "Node {{ $labels.node }} status is not ready"
+      description: "Node {{ $labels.node }} status is not ready for 7m. Status is {{ $labels.status }}"
+
+
+  - alert: nodeStatusCondition
+    expr: kube_node_status_condition{condition!="Ready",status!="false"} > 0
+    for: 7m
+    labels:
+      service: node
+    annotations:
+      summary: "Node {{ $labels.node }} condition {{ $labels.condition }} is on"
+      description: "Node {{ $labels.node }} condition {{ $labels.condition }} is on for 7m. Status is {{ $labels.status }}"
+
+
+  - alert: nodeStatusOutOfDisk
+    expr: kube_node_status_out_of_disk{condition!="false"} > 0
+    for: 7m
+    labels:
+      service: node
+    annotations:
+      summary: "Node {{ $labels.node }} is (possibly) out of disk"
+      description: "Node {{ $labels.node }} is (possibly) out of disk for 7m. Condition is {{ $labels.condition }}"
+
+
+  - alert: nodeStatusMemoryPressure
+    expr: kube_node_status_memory_pressure{condition!="false"} > 0
+    for: 7m
+    labels:
+      service: node
+    annotations:
+      summary: "Node {{ $labels.node }} is (possibly) under memory pressure"
+      description: "Node {{ $labels.node }} is (possibly) under memory pressure for 7m. Condition is {{ $labels.condition }}"
+
+
+  - alert: nodeStatusDiskPressure
+    expr: kube_node_status_disk_pressure{condition!="false"} > 0
+    for: 7m
+    labels:
+      service: node
+    annotations:
+      summary: "Node {{ $labels.node }} is (possibly) under disk pressure"
+      description: "Node {{ $labels.node }} is (possibly) under disk pressure for 7m. Condition is {{ $labels.condition }}"
+
+
+  - alert: nodeStatusNetworkUnavailable
+    expr: kube_node_status_network_unavailable{condition!="false"} > 0
+    for: 7m
+    labels:
+      service: node
+    annotations:
+      summary: "Network is (possibly) unavailable for node {{ $labels.node }}"
+      description: "Network is (possibly) unavailable for node {{ $labels.node }} for 7m. Condition is {{ $labels.condition }}"
+
+
+# DaemonSets
+
+  - alert: daemonSetScheduledNumberLow
+    expr: kube_daemonset_status_current_number_scheduled < kube_daemonset_status_desired_number_scheduled
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of scheduled pods is low for DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }}"
+      description: "Number of scheduled pods is low for DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }} for 7m"
+
+
+  - alert: daemonSetReadyNumberLow
+    expr: kube_daemonset_status_number_ready < kube_daemonset_status_desired_number_scheduled
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of ready pods is low for DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }}"
+      description: "Number of ready pods is low for DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }} for 7m"
+
+
+  - alert: daemonSetMisscheduledNumberHigh
+    expr: kube_daemonset_status_number_misscheduled > 0
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of misscheduled pods is high for DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }}"
+      description: "Number of misscheduled pods is high for DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }} for 7m"
+
+
+# Deployments
+
+  - alert: deploymentReplicaNumberLow
+    expr: kube_deployment_status_replicas < kube_deployment_spec_replicas
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of replicas is low for Deployment {{ $labels.namespace }}/{{ $labels.daemonset }}"
+      description: "Number of replicas is low for Deployment {{ $labels.namespace }}/{{ $labels.daemonset }} for 7m"
+
+
+  - alert: deploymentAvailableNumberLow
+    expr: kube_deployment_status_replicas_available < kube_deployment_spec_replicas
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of available replicas is low for Deployment {{ $labels.namespace }}/{{ $labels.daemonset }}"
+      description: "Number of available replicas is low for Deployment {{ $labels.namespace }}/{{ $labels.daemonset }} for 7m"
+
+
+  - alert: deploymentUnavailableNumberHigh
+    expr: kube_deployment_status_replicas_unavailable > 0
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of unavailable replicas is high for Deployment {{ $labels.namespace }}/{{ $labels.daemonset }}"
+      description: "Number of unavailable replicas is high for Deployment {{ $labels.namespace }}/{{ $labels.daemonset }} for 7m"
+
+
+# ReplicaSets
+
+  - alert: replicaSetReplicaNumberLow
+    expr: kube_replicaset_status_replicas < kube_replicaset_spec_replicas
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of replicas is low for ReplicaSet {{ $labels.namespace }}/{{ $labels.replicaset }}"
+      description: "Number of replicas is low for ReplicaSet {{ $labels.namespace }}/{{ $labels.replicaset }} for 7m"
+
+
+  - alert: replicaSetFullyLabeledNumberLow
+    expr: kube_replicaset_status_fully_labeled_replicas < kube_replicaset_spec_replicas
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of fully labeled replicas is low for ReplicaSet {{ $labels.namespace }}/{{ $labels.replicaset }}"
+      description: "Number of fully labeled replicas is low for ReplicaSet {{ $labels.namespace }}/{{ $labels.replicaset }} for 7m"
+
+
+  - alert: replicaSetReadyNumberLow
+    expr: kube_replicaset_status_ready_replicas < kube_replicaset_spec_replicas
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of ready replicas is low for ReplicaSet {{ $labels.namespace }}/{{ $labels.replicaset }}"
+      description: "Number of ready replicas is low for ReplicaSet {{ $labels.namespace }}/{{ $labels.replicaset }} for 7m"
+
+
+# ReplicaSets
+
+  - alert: replicationControllerReplicaNumberLow
+    expr: kube_replicationcontroller_status_replicas < kube_replicationcontroller_spec_replicas
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of replicas is low for ReplicationController {{ $labels.namespace }}/{{ $labels.replicationcontroller }}"
+      description: "Number of replicas is low for ReplicationController {{ $labels.namespace }}/{{ $labels.replicationcontroller }} for 7m"
+
+
+  - alert: replicationControllerFullyLabeledNumberLow
+    expr: kube_replicationcontroller_status_fully_labeled_replicas < kube_replicationcontroller_spec_replicas
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of fully labeled replicas is low for ReplicationController {{ $labels.namespace }}/{{ $labels.replicationcontroller }}"
+      description: "Number of fully labeled replicas is low for ReplicationController {{ $labels.namespace }}/{{ $labels.replicationcontroller }} for 7m"
+
+
+  - alert: replicationControllerReadyNumberLow
+    expr: kube_replicationcontroller_status_ready_replicas < kube_replicationcontroller_spec_replicas
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of ready replicas is low for ReplicationController {{ $labels.namespace }}/{{ $labels.replicationcontroller }}"
+      description: "Number of ready replicas is low for ReplicationController {{ $labels.namespace }}/{{ $labels.replicationcontroller }} for 7m"
+
+
+  - alert: replicationControllerAvailableNumberLow
+    expr: kube_replicationcontroller_status_available_replicas < kube_replicationcontroller_spec_replicas
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Number of available replicas is low for ReplicationController {{ $labels.namespace }}/{{ $labels.replicationcontroller }}"
+      description: "Number of available replicas is low for ReplicationController {{ $labels.namespace }}/{{ $labels.replicationcontroller }} for 7m"
+
+
+# Pods
+
+  - alert: podPhaseIncorrect
+    expr: kube_pod_status_phase{phase!~"Running|Succeeded"} > 0
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is stuck in a wrong phase {{ $labels.phase }}"
+      description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is stuck in a wrong phase {{ $labels.phase }} for 7m"
+
+
+  - alert: podStatusNotReady
+    expr: kube_pod_status_ready{condition="unknown"} > 0
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is not ready"
+      description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is not ready (condition is {{ $labels.condition }}) for 7m"
+
+
+  - alert: podStatusNotScheduled
+    expr: kube_pod_status_scheduled{condition!="true"} > 0
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is not scheduled"
+      description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is not scheduled (condition is {{ $labels.condition }}) for 7m"
+
+
+  - alert: podContainerWaiting
+    expr: kube_pod_container_status_waiting > 0
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+      summary: "Pod container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} is waiting"
+      description: "Pod container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} is waiting for 7m"
+
+
+  - alert: podContainerRestarting
+    expr: rate(kube_pod_container_status_restarts[1m]) > 0
+    for: 7m
+    labels:
+      service: kubernetes
+    annotations:
+        summary: "Pod container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} is restarting"
+        description: "Pod container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} is restarting for 7m"
+
+  - alert: authGetTokenFail
+    expr: rate(auth_get_token_total{status="error"}[1m]) > 0
+    for: 3m
+    labels:
+      service: "{{ $labels.kubernetes_name }}"
+    annotations:
+        summary: "Fail get token for service '{{ $labels.kubernetes_name }}' error rate is heightened"
+        description: "Fail get token for service  '{{ $labels.kubernetes_namespace }}/{{ $labels.kubernetes_name }}' error rate is heightened on instance {{ $labels.instance }} over last 3m"

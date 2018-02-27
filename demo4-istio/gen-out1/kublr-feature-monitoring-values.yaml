@@ -1,0 +1,5 @@
+influxdb:
+  enabled: false
+  persistence:
+    enabled: false
+    size: 128Gi

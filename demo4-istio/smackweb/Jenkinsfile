@@ -101,10 +101,17 @@ DOCKER_IMAGE_TAG=${imageTag}
 
                 dir("charts") {
 
-                    sh "helm ls"
+                    sh "ls -la"
 
                     sh "helm lint smackweb"
-                    sh "helm upgrade -i smackweb smackweb"
+                    sh """
+                        helm upgrade -i smackweb \
+                            --set api.host=smackapi-smackapi --set api.port=80 \
+                            --set service.type=LoadBalancer --set service.externalPort=80 \
+                            --set image.tag=${imageTag}  ./smackweb
+                     """
+
+                    sh "helm ls"
                 }
             }
         }

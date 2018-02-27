@@ -1,0 +1,41 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "rabbitmq-exporter.fullname" . }}-exporter
+  labels:
+    app: {{ template "rabbitmq-exporter.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  template:
+    metadata:
+      labels:
+        app: {{ template "rabbitmq-exporter.fullname" . }}-exporter
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: {{ .Values.rabbitmqExporterPort | quote }}
+    spec:
+      containers:
+      - name: {{ template "rabbitmq-exporter.fullname" . }}-exporter
+        image: kbudde/rabbitmq-exporter
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: 10m
+            memory: 20Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        env:
+        - name: RABBIT_URL
+          value: "http://{{ template "rabbitmq-exporter.fullname" . }}:15672"
+        - name: RABBIT_USER
+          value: {{ .Values.rabbitmqUsername | quote }}
+        - name: RABBIT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "rabbitmq-exporter.fullname" . }}
+              key: rabbitmq-password
+        ports:
+        - containerPort: {{ .Values.rabbitmqExporterPort }}

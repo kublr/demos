@@ -1,0 +1,4 @@
+
+storageClass:
+  aws: {}
+  type: aws

@@ -1,0 +1,154 @@
+# service account
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: custom-metrics-server
+  namespace: monitoring
+---
+## auth-delegator
+#apiVersion: rbac.authorization.k8s.io/v1
+#kind: ClusterRoleBinding
+#metadata:
+#  name: custom-metrics-server:system:auth-delegator
+#roleRef:
+#  apiGroup: rbac.authorization.k8s.io
+#  kind: ClusterRole
+#  name: system:auth-delegator
+#subjects:
+#- kind: ServiceAccount
+#  name: custom-metrics-server
+#  namespace: monitoring
+---
+## auth-reader
+#apiVersion: rbac.authorization.k8s.io/v1
+#kind: RoleBinding
+#metadata:
+#  name: custom-metrics-server-auth-reader
+#  namespace: kube-system
+#roleRef:
+#  apiGroup: rbac.authorization.k8s.io
+#  kind: Role
+#  name: extension-apiserver-authentication-reader
+#subjects:
+#- kind: ServiceAccount
+#  name: custom-metrics-server
+#  namespace: monitoring
+#---
+# api service
+apiVersion: apiregistration.k8s.io/v1beta1
+kind: APIService
+metadata:
+  name: v1beta1.custom.metrics.k8s.io
+spec:
+  service:
+    name: custom-metrics-server
+    namespace: monitoring
+  group: custom.metrics.k8s.io
+  version: v1beta1
+  versionPriority: 5
+  insecureSkipTLSVerify: true
+  groupPriorityMinimum: 1000
+
+---
+# deployment
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: custom-metrics-server
+  namespace: monitoring
+  labels:
+    app: custom-metrics-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: custom-metrics-server
+  template:
+    metadata:
+      labels:
+        app: custom-metrics-server
+    spec:
+      tolerations:
+      - key: beta.kubernetes.io/arch
+        value: arm
+        effect: NoSchedule
+      - key: beta.kubernetes.io/arch
+        value: arm64
+        effect: NoSchedule
+      serviceAccountName: custom-metrics-server
+      containers:
+      - name: custom-metrics-server
+        image: luxas/k8s-prometheus-adapter:v0.2.0-beta.0
+        args:
+        - --prometheus-url=http://monitoring-prometheus.monitoring:9090
+        - --metrics-relist-interval=30s
+        - --rate-interval=60s
+        - --v=3
+        - --logtostderr=true
+        ports:
+        - containerPort: 443
+        securityContext:
+          runAsUser: 0
+---
+# service
+apiVersion: v1
+kind: Service
+metadata:
+  name: custom-metrics-server
+  namespace: monitoring
+spec:
+  ports:
+  - port: 443
+    targetPort: 443
+  selector:
+    app: custom-metrics-server
+---
+# resource reader
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:custom-metrics-server
+rules:
+- apiGroups:
+  - "custom.metrics.k8s.io"
+  resources: ['*']
+#  - nodes
+#  - namespaces
+#  - pods
+#  - services
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - "extensions"
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+---
+# resource reader binding
+# don't forget to grant access
+#    to horizontal-pod-autoscaler
+#    and to system:anonymous
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:custom-metrics-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:custom-metrics-server
+subjects:
+- kind: ServiceAccount
+  name: custom-metrics-server
+  namespace: monitoring
+- kind: ServiceAccount
+  name: horizontal-pod-autoscaler
+  namespace: kube-system
+- kind: User
+  name: system:anonymous
+  namespace: kube-system
+

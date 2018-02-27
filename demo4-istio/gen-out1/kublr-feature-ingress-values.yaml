@@ -1,0 +1,6 @@
+kube-lego:
+  config:
+    LEGO_EMAIL: dlisin@kublr.com
+    LEGO_URL: 'https://acme-v01.api.letsencrypt.org/directory'
+kube-lego-enabled: true
+nginx-ingress-enabled: true

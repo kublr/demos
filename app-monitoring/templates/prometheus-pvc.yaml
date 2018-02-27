@@ -1,0 +1,28 @@
+{{- if and .Values.prometheus.persistence.enabled ( not .Values.prometheus.persistence.preconfiguredPersistentVolumeClaim ) ( not .Values.prometheus.persistence.hostPath ) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: '{{ .Release.Name }}-prometheus'
+  labels:
+    app: '{{ .Release.Name }}-prometheus'
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+  annotations:
+  {{- if .Values.prometheus.persistence.storageClass }}
+    volume.beta.kubernetes.io/storage-class: {{ .Values.prometheus.persistence.storageClass | quote }}
+  {{- else }}
+    volume.alpha.kubernetes.io/storage-class: default
+  {{- end }}
+spec:
+  {{- if semverCompare ">= 1.6" ( printf "%s.%s" .Capabilities.KubeVersion.Major .Capabilities.KubeVersion.Minor ) }}
+  {{- if .Values.prometheus.persistence.storageClass }}
+  storageClassName: {{ .Values.prometheus.persistence.storageClass | quote }}
+  {{- end }}
+  {{- end }}
+  accessModes:
+    - {{ .Values.prometheus.persistence.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.prometheus.persistence.size | quote }}
+{{- end }}
