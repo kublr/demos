@@ -1,8 +1,0 @@
-brigade:
-  apiServer: "http://brgd-api.demo.kublr.com"
-service:
-  type: ClusterIP
-ingress:
-  enabled: true
-  hosts:
-    - kashti.demo.kublr.com

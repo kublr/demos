@@ -1,9 +1,0 @@
-ingress:
-  enabled: false
-  hosts:
-    - demo5.demo.kublr.com
-api:
-  host: smackapi-smackapi
-service:
-  type: LoadBalancer
-  externalPort: 80

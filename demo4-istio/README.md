@@ -54,6 +54,12 @@ kubectl apply -f istio-0.5.0/install/kubernetes/addons/servicegraph.yaml
 kubectl apply -f istio-0.5.0/install/kubernetes/addons/zipkin.yaml
 ```
 
+
+helm upgrade -i kublr-feature-monitoring --namespace kube-system --set influxdb.enabled=false https://repo.kublr.com/repository/helm/kublr-feature-monitoring-0.4.1.tgz
+helm upgrade -i monitoring --namespace monitoring --set kubernetesApiEndpoint=<clusterApiEndpoint> https://repo.kublr.com/repository/helm/app-monitoring-0.2.3.tgz
+
+
+
 Install istio automatic injection (as istio 0.5.0 requires k8s 1.9+ we use installation file from 0.4.0)
 
 ```
@@ -130,3 +136,6 @@ Open http://$SMACKWEB in browser once again. Some of cells are colored in Colar 
 kubectl create secret generic jenkins-credentials --from-file=./credentials.xml
 helm install -n ci -f jenkins.yaml stable/jenkins
 ```
+
+
+kubectl get svc --namespace default deploy-jenkins --template "{{ range (index .status.loadBalancer.ingress 0) }}{{ . }}{{ end }}"
