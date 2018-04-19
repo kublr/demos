@@ -1,0 +1,73 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: rook-tools
+  labels:
+    operator: rook-tools
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-tools
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9090'
+      labels:
+        app: {{ .Release.Name }}-tools
+        chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: false
+      containers:
+      - name: rook-tools
+        image: rook/toolbox:{{ .Values.imageTag }}
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: ROOK_ADMIN_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: rook-ceph-mon
+                key: admin-secret
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /dev
+            name: dev
+          - mountPath: /sys/bus
+            name: sysbus
+          - mountPath: /lib/modules
+            name: libmodules
+          - name: mon-endpoint-volume
+            mountPath: /etc/rook
+          - mountPath: /etc/ceph
+            name: ceph-conf
+      - name: rook-ceph-exporter
+        image: digitalocean/ceph_exporter
+        imagePullPolicy: Always
+#        args:
+#          - --telemetry.addr=*:9090
+        volumeMounts:
+          - mountPath: /etc/ceph
+            name: ceph-conf
+      volumes:
+        - name: dev
+          hostPath:
+            path: /dev
+        - name: sysbus
+          hostPath:
+            path: /sys/bus
+        - name: libmodules
+          hostPath:
+            path: /lib/modules
+        - name: ceph-conf
+          hostPath:
+            path: /etc/ceph
+        - name: mon-endpoint-volume
+          configMap:
+            name: rook-ceph-mon-endpoints
+            items:
+            - key: data
+              path: mon-endpoints

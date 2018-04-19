@@ -1,0 +1,10 @@
+
+########################################
+{{- if .Values.cluster.useAllNodes }}
+    useAllNodes: true
+{{- else }}
+    useAllNodes: false
+    {{- with .Values.cluster.nodes }}
+{{ toYaml . | indent 6 }}
+    {{- end }}
+{{- end -}}
