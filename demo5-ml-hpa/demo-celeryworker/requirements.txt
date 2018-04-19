@@ -1,6 +1,0 @@
-numpy
-pandas
-sklearn
-scipy
-celery
-flower
