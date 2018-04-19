@@ -76,4 +76,3 @@ do
 done
 
 sudo systemctl restart strongswan && tail -f /var/log/syslog
-

@@ -1,0 +1,84 @@
+kind: Secret
+metadata:
+  name: awsSecret1
+spec:
+  awsApiAccessKey:
+    accessKeyId: <access_key>
+    secretAccessKey: <access-secret>
+---
+kind: Cluster
+metadata:
+  name: demo6-cluster
+spec:
+  kublrAgentTgzUrl: https://repo.kublr.com/repository/gobinaries/kublr/1.9.1-ga2/kublr-1.9.1-ga2-linux.tar.gz
+  network:
+    clusterCIDR: 10.0.0.0/10
+    dnsDomain: aws-cluster.local
+    dnsIP: 10.0.0.10
+    masterIP: 10.0.0.1
+    podCIDR: 10.32.0.0/11
+    serviceCIDR: 10.0.0.0/13
+  locations:
+  - name: aws1
+    aws:
+      region: us-west-1
+      availabilityZones:
+      - us-west-1a
+      - us-west-1b
+      vpcCidrBlock: 172.21.0.0/16
+      awsApiAccessSecretRef: awsSecret1
+  master:
+    locations:
+    - aws:
+        instanceType: t2.large
+        availabilityZones:
+        - us-west-1a
+        overrideImageId: ami-07585467
+        sshKey: <private_key>
+      locationRef: aws1
+    minNodes: 1
+    kublrAgentConfig:
+      kublr:
+        kube_api_server_flag:
+          service-node-port-range:
+            flag: '--service-node-port-range='
+            values:
+              nodeportrange:
+                value: '500-32767'
+                order: '020'
+        resources:
+          kubelet:
+            limits:
+              memory: 256Mi
+  nodes:
+  - locations:
+    - aws:
+        instanceType: t2.large
+        rootVolume:
+          type: gp2
+          iops: null
+          size: 100
+          encrypted: false
+        availabilityZones:
+        - us-west-1a
+        - us-west-1b
+        overrideImageId: ami-07585467
+        sshKey: <private_key>
+      locationRef: aws1
+    autoscaling: false
+    minNodes: 8
+  features:
+    logging:
+      logCollection:
+        enabled: false
+      sinks:
+        - selfHosted:
+            enabled: false
+            persistent: false
+    monitoring:
+      statsCollection:
+        enabled: false
+      sinks:
+        - selfHosted:
+            enabled: false
+            persistent: false

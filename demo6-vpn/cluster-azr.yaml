@@ -1,0 +1,89 @@
+kind: Secret
+metadata:
+  name: azureSecret1
+spec:
+  azureApiAccessKey:
+    tenantId: <tenant_id>
+    subscriptionId: <subscription_id>
+    aadClientId: <client_id>
+    aadClientSecret: <client_secret>
+---
+kind: Cluster
+metadata:
+  name: demo6-cluster2
+spec:
+  kublrAgentTgzUrl: https://repo.kublr.com/repository/gobinaries/kublr/1.9.1-ga2/kublr-1.9.1-ga2-linux.tar.gz
+  secretStore:
+    azureAS:
+      locationRef: azure1
+      useExisting: false
+  network:
+    clusterCIDR: 10.64.0.0/10
+    dnsDomain: azr-cluster.local
+    dnsIP: 10.64.0.10
+    masterIP: 10.64.0.1
+    podCIDR: 10.96.0.0/11
+    provider: cni-calico
+    serviceCIDR: 10.64.0.0/13
+  locations:
+    - name: azure1
+      azure:
+        region: 'eastus'
+        azureApiAccessSecretRef: 'azureSecret1'
+        virtualNetworkSubnetCidrBlock: '172.31.0.0/16'
+  master:
+    maxNodes: 1
+    locations:
+      - locationRef: azure1
+        azure:
+          sshKey: ssh-rsa <ssh_public_key>
+          isAvailabilitySet: true
+          instanceType: 'Standard_A2_v2'
+          osDisk:
+            type: image
+            imagePublisher: Canonical
+            imageOffer: UbuntuServer
+            imageVersion: 16.04-LTS
+    kublrAgentConfig:
+      kublr:
+        kube_api_server_flag:
+          service-node-port-range:
+            flag: '--service-node-port-range='
+            values:
+              nodeportrange:
+                value: '500-32767'
+                order: '020'
+        resources:
+          kubelet:
+            limits:
+              memory: 256Mi
+  nodes:
+    - name: default
+      minNodes: 3
+      maxNodes: 3
+      locations:
+        - locationRef: azure1
+          azure:
+            sshKey: ssh-rsa <ssh_public_key>
+            isAvailabilitySet: true
+            instanceType: 'Standard_A2_v2'
+            osDisk:
+              type: image
+              imagePublisher: Canonical
+              imageOffer: UbuntuServer
+              imageVersion: 16.04-LTS
+  features:
+    logging:
+      logCollection:
+        enabled: false
+      sinks:
+        - selfHosted:
+            enabled: false
+            persistent: false
+    monitoring:
+      statsCollection:
+        enabled: false
+      sinks:
+        - selfHosted:
+            enabled: false
+            persistent: false
