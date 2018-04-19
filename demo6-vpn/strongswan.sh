@@ -77,9 +77,3 @@ done
 
 sudo systemctl restart strongswan && tail -f /var/log/syslog
 
-
-sudo \
-  VPNLOCALPOOL= \
-  VPNREMOTEIP= \
-  VPNREMOTEPOOL= \
-  
