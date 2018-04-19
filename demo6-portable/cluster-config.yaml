@@ -1,0 +1,64 @@
+kind: Secret
+metadata:
+  name: awsSecret1
+spec:
+  awsApiAccessKey:
+    accessKeyId: AKIAIYVY3HH6F747LEZA
+    secretAccessKey: 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
+---
+kind: Cluster
+metadata:
+  name: aegorov-aws6
+spec:
+  kublrAgentTgzUrl: https://repo.kublr.com/repository/gobinaries/kublr/1.8.0/kublr-1.8.0-linux.tar.gz
+  locations:
+  - name: aws1
+    aws:
+      region: us-west-1
+      availabilityZones:
+      - us-west-1a
+      - us-west-1b
+      awsApiAccessSecretRef: awsSecret1
+  master:
+    locations:
+    - aws:
+        instanceType: t2.large
+        availabilityZones:
+        - us-west-1a
+        overrideImageId: ami-07585467
+        sshKey: Alex_Egorov
+      locationRef: aws1
+    minNodes: 1
+    kublrAgentConfig:
+      kublr:
+        resources:
+          kubelet:
+            limits:
+              memory: 256Mi
+  nodes:
+  - locations:
+    - aws:
+        instanceType: t2.large
+        availabilityZones:
+        - us-west-1a
+        - us-west-1b
+        overrideImageId: ami-07585467
+        sshKey: Alex_Egorov
+      locationRef: aws1
+    autoscaling: false
+    minNodes: 3
+  features:
+    logging:
+      logCollection:
+        enabled: true
+    monitoring:
+      statsCollection:
+        enabled: true
+    ingress:
+      ingressControllers:
+      - nginx:
+          acme:
+            apiUrl: https://acme-v01.api.letsencrypt.org/directory
+            email: dlisin@kublr.com
+            enabled: true
+          enabled: true
