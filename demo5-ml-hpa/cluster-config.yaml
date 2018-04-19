@@ -1,0 +1,94 @@
+kind: Secret
+metadata:
+  name: awsSecret1
+spec:
+  awsApiAccessKey:
+    accessKeyId: <aws_access_key>
+    secretAccessKey: <aws_secret_key>
+---
+kind: Cluster
+metadata:
+  name: ml-hpa
+spec:
+  kublrAgentTgzUrl: https://repo.kublr.com/repository/gobinaries/kublr/1.8.0/kublr-1.8.0-linux.tar.gz
+  locations:
+  - name: aws1
+    aws:
+      region: us-west-1
+      availabilityZones:
+      - us-west-1a
+      - us-west-1b
+      awsApiAccessSecretRef: awsSecret1
+  master:
+    locations:
+    - aws:
+        instanceType: t2.large
+        availabilityZones:
+        - us-west-1a
+        sshKey: <ssh_key>
+      locationRef: aws1
+    minNodes: 1
+    kublrAgentConfig:
+      kublr:
+        kube_api_server_flag:
+          requestheader_client_ca_file: '--requestheader-client-ca-file=/srv/kubernetes/current/ca.crt'
+          requestheader_extra_headers_prefix: '--requestheader-extra-headers-prefix=X-Remote-Extra'
+          requestheader_allowed_names:
+            flag: '--requestheader-allowed-names='
+            values:
+              aggregator:
+                value: aggregator
+                order: '010'
+          requestheader_group_headers:
+            flag: '--requestheader-group-headers='
+            values:
+              x_remote_group:
+                value: X-Remote-Group
+                order: '010'
+          requestheader_username_headers:
+            flag: '--requestheader-username-headers='
+            values:
+              x_remote_user:
+                value: X-Remote-User
+                order: '010'
+          runtime_config:
+            flag: '--runtime-config='
+            values:
+              admissionregistration:
+                value: 'api/all=true'
+                order: '020'
+        kube_controller_manager_flag:
+          horizontal_pod_autoscaler_use_rest_clients: '--horizontal-pod-autoscaler-use-rest-clients=true'
+          horizontal-pod-autoscaler-sync-period: '--horizontal-pod-autoscaler-sync-period=30s'
+          horizontal-pod-autoscaler-upscale-delay: '--horizontal-pod-autoscaler-upscale-delay=1m'
+          horizontal-pod-autoscaler-downscale-delay: '--horizontal-pod-autoscaler-downscale-delay=1m'
+          node-monitor-grace-period: '--node-monitor-grace-period=5m'
+        resources:
+          kubelet:
+            limits:
+              memory: 256Mi
+  nodes:
+  - locations:
+    - aws:
+        instanceType: m4.large
+        availabilityZones:
+        - us-west-1a
+        - us-west-1b
+        sshKey: <ssh_key>
+      locationRef: aws1
+    autoscaling: true
+    minNodes: 5
+    maxNodes: 8
+  features:
+    logging:
+      logCollection:
+        enabled: true
+    monitoring:
+      statsCollection:
+        enabled: true
+    ingress:
+      ingressControllers:
+      - nginx:
+          acme:
+            enabled: false
+          enabled: true

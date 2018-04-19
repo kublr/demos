@@ -1,0 +1,66 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+    app: {{ template "name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "name" . }}
+        worker: {{ template "fullname" . }}
+        release: {{ .Release.Name }}
+    spec:
+#      affinity:
+#        podAntiAffinity:
+#          requiredDuringSchedulingIgnoredDuringExecution:
+#          - labelSelector:
+#              matchExpressions:
+#              - key: worker
+#                operator: In
+#                values:
+#                - {{ template "fullname" . }}
+#            topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - celery
+            - -A
+            - Worker
+            - worker
+            - --concurrency=1
+            - --loglevel=info
+            - -n
+            - worker@%n
+          volumeMounts:
+            - name: data
+              mountPath: /opt/data
+          env:
+            - name: 'DATASET'
+              value: {{ .Values.Dataset | quote }}
+            - name: 'RABBITMQ_HOST'
+              value: {{ .Values.Rabbitmq.host | quote }}
+            - name: 'RABBITMQ_PORT'
+              value: {{ .Values.Rabbitmq.port | quote }}
+            - name: 'RABBITMQ_USERNAME'
+              value: {{ .Values.Rabbitmq.username | quote }}
+            - name: 'RABBITMQ_PASSWORD'
+              value: {{ .Values.Rabbitmq.password | quote }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}
+      volumes:
+      - name: data
+        configMap:
+          name: "{{ .Release.Name }}-data"
+          defaultMode: 0755
