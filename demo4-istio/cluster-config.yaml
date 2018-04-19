@@ -63,5 +63,5 @@ spec:
           acme:
             apiUrl:
             email:
-            enabled: false
+            enabled: true
           enabled: true
