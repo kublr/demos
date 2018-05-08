@@ -22,7 +22,7 @@ filesystem:
     activeCount: 1
     nodeAffinity:
       key: kublr.io/node-group
-      value: rook1
+      value: rook
 
 
 config:
@@ -32,10 +32,10 @@ config:
 placement:
   all:
     key: kublr.io/node-group
-    value: rook1
+    value: rook
   mon:
     key: kublr.io/node-group
-    value: rook1
+    value: rook
 
 
 # dd if=/dev/zero of=/data/testfile bs=1G count=10 oflag=direct

@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: 'pvc-rook-block-50-gi'
+spec:
+  storageClassName: rook-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: 'bm-rook-block-50-gi'
+spec:
+  replicas: 1
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: 'bm-rook-block-50-gi'
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: 'bm-rook-block-50-gi'
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+      - name: fio
+        image: alex202/fio:3.6.4
+        command:
+        - sh
+        - -c
+        - |
+          echo '== Starting =='
+          UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+          mkdir /data/$UUID
+          cd /data/$UUID
+
+          while true ; do echo -n `date +%d-%m-%Y-%H:%M:%S`; echo ; fio  --direct=1 --rw=randrw --refill_buffers --norandommap --randrepeat=0 --ioengine=libaio --bs=4k --rwmixread=50 --iodepth=16 --numjobs=16 --runtime=5 --group_reporting --name=4ktest --size=128M  | egrep "(read[ ]*:|write[ ]*:)"; echo  ; sleep 1 ; done
+        volumeMounts:
+        - name: rook-data
+          mountPath: /data
+      volumes:
+      - name: rook-data
+        persistentVolumeClaim:
+          claimName: 'pvc-rook-block-50-gi'
+      nodeSelector:
+        kubernetes.io/hostname: aegorov-rook-agent-workers-0
