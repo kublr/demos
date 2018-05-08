@@ -1,28 +1,75 @@
-imageTag: v0.7.0
+imageTag: v0.7.1
 cluster:
   name: rook
   monCount: 3
   useAllNodes: true
   useHostNetwork: false
-  nodes: []
-  useAllDevices: true
+  useAllDevices: false
   deviceFilter:
+  metadataDevide:
 
 pool:
+  enabled: false
   name: replicapool
-  replicasize: 1
+  config: {}
+#    replicated:
+#      size: 2
+#    erasureCoded:
+#      dataChunks: 2
+#      codingChunks: 1
+
+filesystem:
+  enabled: false
+  name: file-fs
+  metadataPool:
+    replicated:
+      size: 1
+  dataPools:
+  - replicated:
+      size: 1
+#  dataChunks: 2
+#  codingChunks: 1
+  metadataServer:
+    activeCount: 1
+    activeStandby: true
+    nodeAffinity: {}
+#      key: kublr.io/node-group
+#      value: rook
+    resources: {}
+
 
 storageclass:
   default: true
 
+config: {}
+#  pg_num: 512
+
+placement: {}
+#  all:
+#    key: kublr.io/node-group
+#    value: rook
+#  api:
+#    key: rook/role
+#    value: api
+#  mgr:
+#    key: rook/role
+#    value: mgr
+#  mon:
+#    key: rook/role
+#    value: mon
+#  osd:
+#    key: rook/role
+#    value: osd
+
+
 resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious 
-  # choice for the user. This also increases chances charts run on environments with little 
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following 
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #  cpu: 100m
-  #  memory: 128Mi
-  #requests:
-  #  cpu: 100m
-  #  memory: 128Mi
+#  api:
+#    limits:
+#      cpu: "500m"
+#      memory: "1024Mi"
+#    requests:
+#      cpu: "500m"
+#      memory: "1024Mi"
+#  mgr: {}
+#  mon: {}
+#  osd: {}

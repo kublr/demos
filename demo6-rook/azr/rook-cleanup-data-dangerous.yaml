@@ -1,0 +1,35 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: rook-cleanup-data
+  labels:
+    app: rook-cleanup-data
+spec:
+  selector:
+    matchLabels:
+      app: rook-cleanup-data
+  template:
+    metadata:
+      labels:
+        app: rook-cleanup-data
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+      - image: alpine
+        name: main
+        command:
+        - sh
+        - -c
+        - "rm -rf /var_lib/*rook* /data /rook/storage-dir && echo success && sleep 36000"
+        volumeMounts:
+        - mountPath: /var_lib
+          name: rook
+        - mountPath: /rook
+          name: rook1
+      volumes:
+      - name: rook
+        hostPath:
+          path: /var/lib
+      - name: rook1
+        hostPath:
+          path: /rook

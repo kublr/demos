@@ -17,52 +17,83 @@ spec:
 # To control where various services will be scheduled by kubernetes, use the placement configuration sections below.
 # The example under 'all' would have all services scheduled on kubernetes nodes labeled with 'role=storage' and
 # tolerate taints with a key of 'storage-node'.
-#  placement:
-#    all:
-#      nodeAffinity:
-#        requiredDuringSchedulingIgnoredDuringExecution:
-#          nodeSelectorTerms:
-#          - matchExpressions:
-#            - key: role
-#              operator: In
-#              values:
-#              - storage-node
-#      podAffinity:
-#      podAntiAffinity:
-#      tolerations:
-#      - key: storage-node
-#        operator: Exists
-#    api:
-#      nodeAffinity:
-#      podAffinity:
-#      podAntiAffinity:
-#      tolerations:
-#    mgr:
-#      nodeAffinity:
-#      podAffinity:
-#      podAntiAffinity:
-#      tolerations:
-#    mon:
-#      nodeAffinity:
-#      tolerations:
-#    osd:
-#      nodeAffinity:
-#      podAffinity:
-#      podAntiAffinity:
-#      tolerations:
+  placement:
+{{- if .Values.placement }}
+{{- if .Values.placement.all }}
+    all:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: {{ .Values.placement.all.key }}
+              operator: In
+              values:
+              - {{ .Values.placement.all.value }}
+{{- end }}
+{{- if .Values.placement.api }}
+    api:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: {{ .Values.placement.api.key }}
+              operator: In
+              values:
+              - {{ .Values.placement.api.value }}
+{{- end }}
+{{- if .Values.placement.mgr }}
+    mgr:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: {{ .Values.placement.mgr.key }}
+              operator: In
+              values:
+              - {{ .Values.placement.mgr.value }}
+{{- end }}
+{{- if .Values.placement.mon }}
+    mon:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: {{ .Values.placement.mon.key }}
+              operator: In
+              values:
+              - {{ .Values.placement.mon.value }}
+{{- end }}
+{{- if .Values.placement.osd }}
+    osd:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: {{ .Values.placement.osd.key }}
+              operator: In
+              values:
+              - {{ .Values.placement.osd.value }}
+{{- end }}
+{{- end }}
+{{- if .Values.resources }}
   resources:
-#    api:
-# The requests and limits set here, allow the api Pod to use half of one CPU core and 1 gigabyte of memory
-#      limits:
-#        cpu: "500m"
-#        memory: "1024Mi"
-#      requests:
-#        cpu: "500m"
-#        memory: "1024Mi"
-# the above example requests/limits can also be added to the other components too
-#    mgr:
-#    mon:
-#    osd:
+{{- if .Values.resources.api }}
+    api:
+{{ .Values.resources.api | toYaml | indent 6 }}
+{{- end }}
+{{- if .Values.resources.mgr }}
+    mgr:
+{{ .Values.resources.mgr | toYaml | indent 6 }}
+{{- end }}
+{{- if .Values.resources.mon }}
+    mon:
+{{ .Values.resources.mon | toYaml | indent 6 }}
+{{- end }}
+{{- if .Values.resources.osd }}
+    osd:
+{{ .Values.resources.osd | toYaml | indent 6 }}
+{{- end }}
+{{- end }}
   storage: # cluster level storage configuration and selection
 {{- if .Values.cluster.useAllNodes }}
     useAllNodes: true
@@ -75,18 +106,16 @@ spec:
 {{- end }}
 {{- if .Values.cluster.useAllDevices }}
     useAllDevices: true
-    deviceFilter:
 {{- else }}
     useAllDevices: false
-    deviceFilter: {{ .Values.cluster.deviceFilter }}
 {{- end }}
-    metadataDevice:
+    deviceFilter: {{ .Values.cluster.deviceFilter | quote }}
+    metadataDevide: {{ .Values.cluster.metadataDevide | quote }}
     location:
     storeConfig:
       storeType: bluestore
-      databaseSizeMB: 1024 # this value can be removed for environments with normal sized disks (100 GB or larger)
-      journalSizeMB: 1024  # this value can be removed for environments with normal sized disks (20 GB or larger)
-
+      #databaseSizeMB: 1024 # this value can be removed for environments with normal sized disks (100 GB or larger)
+      #journalSizeMB: 1024  # this value can be removed for environments with normal sized disks (20 GB or larger)
 # Cluster level list of directories to use for storage. These values will be set for all nodes that have no `directories` set.
 #    directories:
 #    - path: /rook/storage-dir

@@ -1,0 +1,20 @@
+apiVersion: v1
+data:
+  prometheus.yaml: |-
+    {
+        "datasources": [
+            {
+                "access": "proxy",
+                "etitable": false,
+                "name": "rook-prometheus",
+                "org_id": 1,
+                "type": "prometheus",
+                "url": "http://rook-prometheus.rook.svc:9090",
+                "version": 1
+            }
+        ]
+    }
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: monitoring

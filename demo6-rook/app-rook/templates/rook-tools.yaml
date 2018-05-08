@@ -14,7 +14,7 @@ spec:
     metadata:
       annotations:
         prometheus.io/scrape: 'true'
-        prometheus.io/port: '9090'
+        prometheus.io/port: '9128'
       labels:
         app: {{ .Release.Name }}-tools
         chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"

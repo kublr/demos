@@ -1,3 +1,4 @@
+{{- if .Values.pool.enabled }}
 apiVersion: rook.io/v1alpha1
 kind: Pool
 metadata:
@@ -7,11 +8,13 @@ spec:
   failureDomain: osd
   # The root of the crush hierarchy that will be used for the pool. If not set, will use "default".
   crushRoot: default
+{{ .Values.pool.config | toYaml | indent 2}}
   # For a pool based on raw copies, specify the number of copies. A size of 1 indicates no redundancy.
-  replicated:
-    size: {{ .Values.pool.replicasize }}
+#  replicated:
+#    size: {{ .Values.pool.replicasize }}
   # For an erasure-coded pool, comment out the replicated size above and uncomment the following settings.
   # Make sure you have enough OSDs to support the replica size or sum of the erasure coding and data chunks.
-  #erasureCoded:
-  #  dataChunks: 2
-  #  codingChunks: 1
+#  erasureCoded:
+#    dataChunks: {{ .Values.pool.dataChunks }}
+#    codingChunks: {{ .Values.pool.codingChunks }}
+{{- end }}

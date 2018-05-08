@@ -1,0 +1,41 @@
+cluster:
+  name: rook
+  monCount: 3
+  useHostNetwork: false
+  useAllNodes: true
+  useAllDevices: false
+  deviceFilter: 'nvme[1-9]n1'
+  metadataDevice:
+
+pool:
+  enabled: true
+  config:
+    replicated:
+      size: 2
+
+filesystem:
+  enabled: false
+#  metadataPool:
+#    replicated:
+#      size: 2
+#  dataPools:
+#   - replicated:
+#      size: 2
+#  metadataServer:
+#    activeCount: 1
+#    nodeAffinity:
+#      key: kublr.io/node-group
+#      value: monitors
+
+
+config:
+  pg_num: 512
+
+
+placement:
+  all:
+    key: kublr.io/node-group
+    value: monitors
+#  mon:
+#    key: kublr.io/node-group
+#    value: monitors

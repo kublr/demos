@@ -1,0 +1,35 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: ubuntu
+  labels:
+    app: ubuntu
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ubuntu
+    spec:
+      containers:
+      - name: ubuntu
+        image: ubuntu:16.04
+        command:
+        - sh
+        - -c
+        - |
+          sleep infinity
+        volumeMounts:
+        - name: rook-data
+          mountPath: /data
+      volumes:
+      - name: rook-data
+        flexVolume:
+          driver: rook.io/rook
+          fsType: ceph
+          options:
+            fsName: file-fs
+            clusterName: rook
+      nodeSelector:
+        kublr.io/node-group: workers
+

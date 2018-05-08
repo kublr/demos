@@ -1,0 +1,35 @@
+{{- if .Values.filesystem.enabled }}
+apiVersion: rook.io/v1alpha1
+kind: Filesystem
+metadata:
+  name: {{ .Values.filesystem.name }}
+spec:
+  metadataPool:
+{{ .Values.filesystem.metadataPool | toYaml | indent 4 }}
+  dataPools:
+#    - erasureCoded:
+#       dataChunks: {{ .Values.filesystem.dataChunks }}
+#       codingChunks: {{ .Values.filesystem.codingChunks }}
+{{ .Values.filesystem.dataPools | toYaml | indent 4 }}
+  metadataServer:
+    activeCount: {{ .Values.filesystem.metadataServer.activeCount }}
+    activeStandby: {{ .Values.filesystem.metadataServer.activeStandby }}
+    placement:
+{{- if .Values.filesystem.metadataServer.nodeAffinity }}
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: {{ .Values.filesystem.metadataServer.nodeAffinity.key }}
+              operator: In
+              values:
+              - {{ .Values.filesystem.metadataServer.nodeAffinity.value }}
+{{- end }}
+    #  tolerations:
+    #  - key: mds-node
+    #    operator: Exists
+    #  podAffinity:
+    #  podAntiAffinity:
+    resources:
+{{- .Values.filesystem.metadataServer.resources | toYaml | indent 6 }}
+{{- end }}

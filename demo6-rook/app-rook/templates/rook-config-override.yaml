@@ -1,11 +1,12 @@
 # kubectl -n rook edit configmap rook-config-override
-#apiVersion: v1
-#kind: ConfigMap
-#metadata:
-#  name: rook-config-override
-#data:
-#  config: |
-#    [global]
-#    osd crush update on start = false
-#    osd pool default size = 2
-#    #rbd_default_features = 127 # http://tracker.ceph.com/issues/15000
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rook-config-override
+data:
+  config: |
+    [global]
+    #osd crush update on start = false
+    #osd pool default size = 2
+    ceph osd pool set rbd pg_num 512
+    #rbd_default_features = 127 # http://tracker.ceph.com/issues/15000

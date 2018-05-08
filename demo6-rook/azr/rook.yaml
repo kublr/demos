@@ -1,0 +1,44 @@
+cluster:
+  name: rook
+  monCount: 3
+  useHostNetwork: false
+  useAllNodes: true
+  useAllDevices: false
+  deviceFilter: 'sd[c-d]'
+  metadataDevice:
+
+pool:
+  enabled: false
+
+filesystem:
+  enabled: true
+  metadataPool:
+    replicated:
+      size: 2
+  dataPools:
+   - replicated:
+      size: 2
+  metadataServer:
+    activeCount: 1
+    nodeAffinity:
+      key: kublr.io/node-group
+      value: rook1
+
+
+config:
+  pg_num: 512
+
+
+placement:
+  all:
+    key: kublr.io/node-group
+    value: rook1
+  mon:
+    key: kublr.io/node-group
+    value: rook1
+
+
+# dd if=/dev/zero of=/data/testfile bs=1G count=10 oflag=direct
+
+# 172.21.60.29:6790,172.21.52.198:6790,172.21.59.71:6790:/ on /data type ceph (rw,relatime,name=admin,secret=<hidden>,acl)
+
