@@ -6,10 +6,10 @@ data:
             {
                 "access": "proxy",
                 "etitable": false,
-                "name": "rook-prometheus",
+                "name": "prometheus",
                 "org_id": 1,
                 "type": "prometheus",
-                "url": "http://rook-prometheus.rook.svc:9090",
+                "url": "http://prometheus-k8s.monitoring.svc:9090",
                 "version": 1
             }
         ]

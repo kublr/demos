@@ -229,8 +229,21 @@ rbd -p <name_of_pool> info <name_of_object>
 ```
 cd ../monitoring
 kubectl create ns monitoring
+kubectl apply -f prometheus-operator.yaml
 
+kubectl apply -f service-monitor.yaml
+kubectl apply -f prometheus.yaml
+kubectl apply -f prometheus-service.yaml
+kubectl apply -f grafana.yaml
+kubectl apply -f grafana-service.yaml
 ```
+
+Add http://prometheus-operated:9090 as datasource
+
+Import dashboards:
+  - 2842
+  - 5336
+  - 5342
 
 
 ## Testing
