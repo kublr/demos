@@ -38,7 +38,7 @@ docker build -t kublr/demo-gpu:gpu
 or
 ```
 docker build -t kublr/demo-gpu:cpu
-
+```
 ## Run docker:
 ```
 nvidia-docker run -it -p PORT:PORT kublr/demo-gpu:gpu
