@@ -46,3 +46,11 @@ Arguments are:
 -port which has a tunnel
 -compression percentage. For example 40 will compress the image and keep 40% of the quality. 10 will keep 10% of the quality
 
+If you want to build the docker manually after cloning from github:
+1. Clone repo
+2. cd into darknet directory
+3. download weights for the neural network
+"""
+wget https://pjreddie.com/media/files/yolov3.weights
+"""
+4. build docker
