@@ -12,7 +12,8 @@ su -c "echo 'deb http://ppa.launchpad.net/git-core/ppa/ubuntu trusty main' > /et
 apt-get update  && \
 apt-get install -y git
 
-RUN apt-get install -y nano
+RUN apt-get install -y nano && \
+apt-get install wget
 
 RUN apt-get install -y libglib2.0-0 && \
 apt-get install -y libsm6 && \
@@ -21,21 +22,24 @@ apt-get install libxrender1
 
 
 RUN pip install opencv-contrib-python==3.4.0.12 && \
-pip install devicehive==2.1.3 && \
-pip install -e git://github.com/devicehive/devicehive-python-webconfig.git#egg=devicehive_webconfig && \
-pip install six==1.11.0 && \
-pip install pafy==0.5.3.1 && \
 pip install youtube-dl==2017.11.15 && \
 pip install flask
 
 
 USER root
 EXPOSE 8000
-WORKDIR /
+WORKDIR /opt
 
-COPY /darknet /opt/volume
+COPY /darknet /opt/darknet
+COPY run.sh /opt
 
-CMD ["/bin/bash"]
+RUN chmod +x /opt/run.sh
+
+ENV VIDEO_LINK=https://www.youtube.com/watch?v=9bZkp7q19f0
+ENV VIDEO_OUTPUT_COMPRESSION=10
+ENV OUTPUT_PORT=8000
+
+CMD ["./run.sh"]
 
 # To run the sshuttle 
 # sshuttle --no-latency-control -N -v -r user@ip localhost:8000 localhost:8000
