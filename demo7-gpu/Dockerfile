@@ -33,6 +33,8 @@ USER root
 EXPOSE 8000
 WORKDIR /
 
+COPY /darknet /opt/volume
+
 CMD ["/bin/bash"]
 
 # To run the sshuttle 
