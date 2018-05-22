@@ -1,13 +1,6 @@
 #!/bin/bash
-if hash nvcc > /dev/null; then # If cuda is installed
-    # Compile using GPU
-    echo "CUDA found. Making for GPU"
-    var="1"
-else 
-    # Compile using CPU
-    echo "CUDA not found. Making for CPU"
-    var="0"
-fi
+echo "CUDA not found. Making for CPU"
+var="1"
 
 sed -i "1s/.*/GPU=$var/" darknet/Makefile
 cd darknet
@@ -21,5 +14,12 @@ if [ ! -f yolov3.weights ]; then
 fi
 
 cd python
+# Check if port is ok.
+while lsof -Pi :$OUTPUT_PORT -sTCP:LISTEN -t >/dev/null; do
+    echo "Port ${OUTPUT_PORT} is busy. +1"
+    let OUTPUT_PORT=OUTPUT_PORT+1
+done
+echo "Port found: ${OUTPUT_PORT}"
+
 # Run script
-python darknet.py $VIDEO_LINK $OUTPUT_PORT $VIDEO_OUTPUT_COMPRESSION 
+python darknet.py $VIDEO_LINK $OUTPUT_PORT $VIDEO_OUTPUT_COMPRESSION
