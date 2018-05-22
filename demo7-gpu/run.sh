@@ -1,6 +1,13 @@
 #!/bin/bash
-echo "CUDA not found. Making for CPU"
-var="1"
+if hash nvcc > /dev/null; then # If cuda is installed
+    # Compile using GPU
+    echo "CUDA found. Making for GPU"
+    var="1"
+else 
+    # Compile using CPU
+    echo "CUDA not found. Making for CPU"
+    var="0"
+fi
 
 sed -i "1s/.*/GPU=$var/" darknet/Makefile
 cd darknet
