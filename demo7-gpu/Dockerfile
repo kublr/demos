@@ -15,6 +15,7 @@ apt-get install -y git
 RUN apt-get install -y nano && \
 apt-get install wget
 
+
 RUN apt-get install -y libglib2.0-0 && \
 apt-get install -y libsm6 && \
 apt-get install libxrender1
@@ -40,6 +41,7 @@ ENV VIDEO_OUTPUT_COMPRESSION=10
 ENV OUTPUT_PORT=8000
 
 CMD ["./run.sh"]
+
 
 # To run the sshuttle 
 # sshuttle --no-latency-control -N -v -r user@ip localhost:8000 localhost:8000
