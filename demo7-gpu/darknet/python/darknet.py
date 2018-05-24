@@ -7,6 +7,8 @@ import cv2
 import numpy as np
 from flask import Flask, render_template, Response
 from threading import Thread
+import yt_down
+
 
 VIDEO_NAME = 'vid.mp4'
 
@@ -358,12 +360,16 @@ if __name__ == "__main__":
     set_gpu(0)
     net = load_net("../cfg/yolov3.cfg", "../yolov3.weights", 0)
     meta = load_meta("../cfg/coco.data")
-    VIDEO_NAME = sys.argv[1]
+
+    VIDEO_URL = sys.argv[1]
     port = int(sys.argv[2])
     compression = int(sys.argv[3])
 
+    yt_down.down(VIDEO_URL)
+
     # Thread to read video frame by frame and prepare it for predict
-    read_vid_thread = PrepVideo(VIDEO_NAME, 50)
+    read_vid_thread = PrepVideo('vid.mp4', 50)
+
     read_vid_thread.deamon = True
     read_vid_thread.start()
     threads.append(read_vid_thread)
