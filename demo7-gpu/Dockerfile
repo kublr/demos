@@ -23,7 +23,7 @@ apt-get install libxrender1
 
 
 RUN pip install opencv-contrib-python==3.4.0.12 && \
-pip install youtube-dl==2017.11.15 && \
+pip install youtube-dl && \
 pip install flask
 
 
