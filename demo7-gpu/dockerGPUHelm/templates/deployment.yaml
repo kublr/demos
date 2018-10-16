@@ -29,7 +29,7 @@ spec:
           - name: "OUTPUT_PORT"
             value: "8000"
           - name: "VIDEO_OUTPUT_COMPRESSION"
-            value: "10"
+            value: "70"
           ports:
             - name: http
               containerPort: 8000
