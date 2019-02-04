@@ -20,6 +20,8 @@ if [ ! -f yolov3.weights ]; then
     wget https://pjreddie.com/media/files/yolov3.weights
 fi
 
+pip install youtube-dl --upgrade
+
 cd python
 # Check if port is ok.
 while lsof -Pi :$OUTPUT_PORT -sTCP:LISTEN -t >/dev/null; do
