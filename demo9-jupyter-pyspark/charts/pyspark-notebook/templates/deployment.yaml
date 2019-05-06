@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    "app.kubernetes.io/name": {{ template "pyspark-notebook.name" . }}
+    "helm.sh/chart": {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    "app.kubernetes.io/managed-by": {{ .Release.Service }}
+    "app.kubernetes.io/instance": {{ .Release.Name }}
+    "app.kubernetes.io/version": {{ .Chart.AppVersion }}
+    "app.kubernetes.io/component": jupyter
+    sparkRole: driver
+  name: {{ template "pyspark-notebook.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      "app.kubernetes.io/component": jupyter
+      sparkRole: driver
+      "app.kubernetes.io/instance": {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        "app.kubernetes.io/component": jupyter
+        sparkRole: driver
+        "app.kubernetes.io/instance": {{ .Release.Name }}
+    spec:
+      containers:
+        - name: jupyter
+          image: {{ .Values.jupyter.image }}
+          volumeMounts:
+            - name: {{ .Release.Name }}-config-volume
+              mountPath: {{ .Values.jupyter.configDir }}
+            - name: {{ .Release.Name }}-notebooks
+              mountPath: /jupyter
+      serviceAccountName: {{ template "pyspark-notebook.serviceAccountName" . }}
+      volumes:
+        - name: {{ .Release.Name }}-config-volume
+          configMap:
+            name: {{ template "pyspark-notebook.configMap.name" . }}
+        - name: {{ .Release.Name }}-notebooks
+          {{- if .Values.jupyter.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ template "pyspark-notebook.jupyter.pvc.name" . }}
+          {{- end }}

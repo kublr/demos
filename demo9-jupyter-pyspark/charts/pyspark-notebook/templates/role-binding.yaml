@@ -1,0 +1,21 @@
+{{- if and .Values.rbac.create .Values.roleBinding.create }}
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    "app.kubernetes.io/name": {{ template "pyspark-notebook.name" . }}
+    "helm.sh/chart": {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    "app.kubernetes.io/managed-by": {{ .Release.Service }}
+    "app.kubernetes.io/instance": {{ .Release.Name }}
+    "app.kubernetes.io/version": {{ .Chart.AppVersion }}
+  name: {{ template "pyspark-notebook.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.roleBinding.clusterRole }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "pyspark-notebook.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end -}}

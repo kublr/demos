@@ -1,0 +1,19 @@
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    "app.kubernetes.io/name": {{ template "pyspark-notebook.name" . }}
+    "helm.sh/chart": {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    "app.kubernetes.io/managed-by": {{ .Release.Service }}
+    "app.kubernetes.io/instance": {{ .Release.Name }}
+    "app.kubernetes.io/version": {{ .Chart.AppVersion }}
+  name: {{ template "pyspark-notebook.fullname" . }}-spark-ui
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    sparkRole: driver
+    "app.kubernetes.io/instance": {{ .Release.Name }}
+  ports:
+    - protocol: TCP
+      port: 4040
+      targetPort: 4040

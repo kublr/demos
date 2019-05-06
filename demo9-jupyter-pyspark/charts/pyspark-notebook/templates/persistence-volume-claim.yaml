@@ -1,0 +1,32 @@
+{{- if .Values.jupyter.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    "app.kubernetes.io/name": {{ template "pyspark-notebook.name" . }}
+    "helm.sh/chart": {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    "app.kubernetes.io/managed-by": {{ .Release.Service }}
+    "app.kubernetes.io/instance": {{ .Release.Name }}
+    "app.kubernetes.io/version": {{ .Chart.AppVersion }}
+    "app.kubernetes.io/component": jupyter
+    "storage.purpose": "notebooks"
+  name: {{ template "pyspark-notebook.jupyter.pvc.name" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  accessModes:
+    - {{ .Values.jupyter.persistence.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.jupyter.persistence.size | quote }}
+{{- if .Values.jupyter.persistence.storageClass }}
+  {{- if (eq "-" .Values.jupyter.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ .Values.jupyter.persistence.storageClass }}"
+  {{- end }}
+{{- end }}
+{{- if .Values.jupyter.persistence.selector }}
+  selector:
+{{ toYaml .Values.jupyter.persistence.selector | indent 10 }}
+{{- end }}
+{{- end }}

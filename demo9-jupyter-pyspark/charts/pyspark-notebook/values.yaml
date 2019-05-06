@@ -1,0 +1,34 @@
+rbac:
+  # rbac.create specifies whether RBAC resources should be created
+  create: true
+serviceAccount:
+  # serviceAccount.create specifies whether a ServiceAccount should be created
+  create: true
+  # serviceAccount.name is the name of the ServiceAccount to use
+  name:
+roleBinding:
+  # roleBinding.create specifies whether a ClusterRoleBinding should be created for the ServiceAccount
+  create: true
+  # roleBinding.clusterRole is the name of the cluster role that should be assigned to the ServiceAccount
+  clusterRole: "cluster-admin"
+configMap:
+  # configMap.create specifies whether a ConfigMap should be created
+  create: true
+  # configMap.name is the name of the ConfigMap
+  name:
+jupyter:
+  # jupyter.image is the Docker image used to create a Jupyter Notebook pod
+  image: "kublr/pyspark-notebook:spark-2.4.0-hadoop-2.6"
+  # jupyter.configDir specifies the path of the Jupyter Notebook configuration directory in the pod filesystem
+  configDir: "/root/.jupyter"
+  # jupyter.localPort specifies the port of Jupyter Notebook inside the pod
+  localPort: 8888
+  # jupyter.externalPort specifies the port of Jupyter Notebook outside the pod
+  externalPort: 80
+  persistence:
+    # jupyter.persistence.enabled specifies whether Jupyter notebooks should be stored on a persistent volume
+    enabled: true
+    # jupyter.persistence.accessMode specifies the access mode of the notebook volume
+    accessMode: ReadWriteOnce
+    # jupyter.persistence.size specifies the size of the notebook volume
+    size: 5Gi

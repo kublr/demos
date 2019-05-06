@@ -1,0 +1,19 @@
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    "app.kubernetes.io/name": {{ template "pyspark-notebook.name" . }}
+    "helm.sh/chart": {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    "app.kubernetes.io/managed-by": {{ .Release.Service }}
+    "app.kubernetes.io/instance": {{ .Release.Name }}
+    "app.kubernetes.io/version": {{ .Chart.AppVersion }}
+  name: {{ template "pyspark-notebook.jupyter.service.name" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    "app.kubernetes.io/component": jupyter
+    "app.kubernetes.io/instance": {{ .Release.Name }}
+  ports:
+    - protocol: TCP
+      port: {{ .Values.jupyter.externalPort }}
+      targetPort: {{ .Values.jupyter.localPort }}
