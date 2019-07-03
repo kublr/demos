@@ -3,3 +3,4 @@ target/
 **/*.tgz
 **/.cluster-config.yaml
 **/gen-out/**
+*.iml

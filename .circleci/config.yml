@@ -1,0 +1,211 @@
+# Javascript Node CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-javascript/ for more details
+#
+version: 2.1
+orbs:
+  kublr-api: kublr/kublr-api@dev:6
+jobs:
+  build:
+    docker:
+      # specify the version you desire here
+      - image: circleci/node:8.9.4
+
+    working_directory: ~/repo
+
+    steps:
+      - run:
+          name: Check setup env variables
+          command: |
+            if [ -z "$DOCKERHUB_USERNAME" ]; then
+                echo "Please set DOCKERHUB_USERNAME environment variable"
+                exit 1
+            fi
+            if [ -z "$DOCKERHUB_PASS" ]; then
+                echo "Please set DOCKERHUB_PASS environment variable"
+                exit 1
+            fi
+            if [ -z "$IMAGE_NAME" ]; then
+                echo "Please set IMAGE_NAME environment variable"
+                exit 1
+            fi
+            if [ -z "$KUBLR_ENDPOINT" ]; then
+                echo "Please set KUBLR_ENDPOINT environment variable"
+                exit 1
+            fi
+            if [ -z "$KUBLR_USERNAME" ]; then
+                echo "Please set KUBLR_USERNAME environment variable"
+                exit 1
+            fi
+            if [ -z "$KUBLR_PASSWORD" ]; then
+                echo "Please set KUBLR_PASSWORD environment variable"
+                exit 1
+            fi
+      - checkout
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "demo10-circleci/package.json" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+
+      - run:
+          name: Install deps
+          command: |
+            cd demo10-circleci
+            npm install
+      - save_cache:
+          paths:
+            - demo10-circleci/node_modules
+          key: v1-dependencies-{{ checksum "demo10-circleci/package.json" }}
+
+      # run tests!
+      - run:
+          name: Run tests
+          command: |
+            cd demo10-circleci
+            npm test
+      # Start building docker container
+      - setup_remote_docker
+      - run:
+          name: Set envs
+          command: |
+            DEPLOY_DOCKER_IMAGE="$IMAGE_NAME:$CIRCLE_BRANCH-$CIRCLE_BUILD_NUM"
+            echo "export DEPLOY_DOCKER_IMAGE='$DEPLOY_DOCKER_IMAGE'" >> $BASH_ENV
+            echo "Docker image '$DEPLOY_DOCKER_IMAGE'"
+            if [ -z "$CLUSTER_SPACE" ]; then
+                CLUSTER_SPACE='default'
+                echo "export CLUSTER_SPACE='${CLUSTER_SPACE}'" >> $BASH_ENV
+                echo "/api/spaces/$CLUSTER_SPACE/cluster"
+            fi
+            source $BASH_ENV
+      - run:
+          name: Build Docker image
+          command: |
+            printenv
+            cd demo10-circleci
+            echo "Building docker image '$DEPLOY_DOCKER_IMAGE'"
+            docker build -t $DEPLOY_DOCKER_IMAGE .
+      - run:
+          name: Publish Docker Image to Docker Hub
+          command: |
+            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            echo "Pushing image $DEPLOY_DOCKER_IMAGE"
+            docker push $DEPLOY_DOCKER_IMAGE
+      - kublr-api/auth:
+          kublr-endpoint: KUBLR_ENDPOINT
+          kublr-username: KUBLR_USERNAME
+          kublr-password: KUBLR_PASSWORD
+          insecure: true
+      - run:
+          name: Print variables
+          command: |
+            printenv || true
+#      - run:
+#          name: Set cluster variables for testing
+#          command: |
+#            CLUSTER_SPACE='default'
+#            CLUSTER_NAME='circleci-demo'
+#            CLUSTER_ID='5d14a27f3cc7fc00013e157c'
+#            echo "export CLUSTER_SPACE='${CLUSTER_SPACE}'" >> $BASH_ENV
+#            echo "export CLUSTER_NAME='${CLUSTER_NAME}'" >> $BASH_ENV
+#            echo "export CLUSTER_ID='${CLUSTER_ID}'" >> $BASH_ENV
+#            echo "Cluster id=$CLUSTER_ID name=$CLUSTER_NAME space=$CLUSTER_SPACE"
+      - kublr-api/call:
+          call-method: POST
+          call-path: "/api/spaces/$CLUSTER_SPACE/cluster"
+          call-data-file: "./demo10-circleci/k8s/cluster-spec.json"
+          result-file: "./demo10-circleci/cluster-result.json"
+          insecure: true
+      - run:
+          name: Check while cluster will have Running status
+          command: |
+            cd demo10-circleci
+            pwd
+            cat cluster-result.json
+            CLUSTER_SPACE=$(cat cluster-result.json | jq -r '.metadata.space')
+            CLUSTER_NAME=$(cat cluster-result.json | jq -r '.metadata.name')
+            CLUSTER_ID=$(cat cluster-result.json | jq -r '.id')
+            echo "export CLUSTER_SPACE='${CLUSTER_SPACE}'" >> $BASH_ENV
+            echo "export CLUSTER_NAME='${CLUSTER_NAME}'" >> $BASH_ENV
+            echo "export CLUSTER_ID='${CLUSTER_ID}'" >> $BASH_ENV
+            echo "Cluster id=$CLUSTER_ID name=$CLUSTER_NAME space=$CLUSTER_SPACE"
+            HEADERS=(-k -s --header 'Content-Type: application/json' --header 'Accept: application/json' --header 'Authorization: bearer '${KUBLR_TOKEN})
+
+            echo "HEADERS=${HEADERS[@]}"
+
+            echo "Create cluster with id $CLUSTER_ID name $CLUSTER_NAME"
+
+            REQ_URL="$KUBLR_ENDPOINT/api/spaces/$CLUSTER_SPACE/cluster/$CLUSTER_NAME/id/$CLUSTER_ID"
+
+            START_TIME=$(date +%s)
+            TIMEOUT=900
+            echo $START_TIME
+            while (( "$(date +%s) - $START_TIME" < ${TIMEOUT} ))
+            do
+                CLUSTER_STATE=$(curl -X GET "${HEADERS[@]}" $REQ_URL| jq -r '.status.state')
+                if [ "$CLUSTER_STATE" == "Running" ]; then
+                    echo "Cluster is running"
+                    break;
+                elif [ "$CLUSTER_STATE" == "" -o "$CLUSTER_STATE" == "Creating" ]; then
+                    echo "Waiting creation, current status $CLUSTER_STATE"
+                    sleep 10
+                else
+                    echo "Cluster state is $CLUSTER_STATE"
+                    exit 1
+                fi
+            done
+            echo "Cluster state is Ready"
+      - run:
+          name: Print env vars
+          command: |
+            echo "space=$CLUSTER_SPACE name=$CLUSTER_NAME id=$CLUSTER_ID"
+      - kublr-api/get-cluster-config:
+          kublr-space: $CLUSTER_SPACE
+          kublr-cluster: $CLUSTER_NAME
+          kubeconfig-file: "./demo10-circleci/config"
+          insecure: true
+      - run:
+          name: Print config
+          command: |
+            cat ./demo10-circleci/config
+      - kublr-api/get-kubernetes-client:
+          kublr-space: $CLUSTER_SPACE
+          kublr-cluster: $CLUSTER_NAME
+          kubectl-file: "./demo10-circleci/kubectl"
+          insecure: true
+      - run:
+          name: Prepare kubernetes deploy yaml files and deploy
+          command: |
+            cd ./demo10-circleci
+            eval "echo \"$(cat ./k8s/deployment-template.yml)\"" > ./k8s/deployment.yml
+            cat ./k8s/deployment.yml
+            echo "PATH=$PATH"
+            ./kubectl apply -f ./k8s/deployment.yml
+      - run:
+          name: Install service and ingress
+          command: |
+            cd ./demo10-circleci
+            SERVICES_COUNT=$(./kubectl get services | awk '{print $1}' | grep -c "http-server-demo-service" || true)
+            echo "Service count $SERVICES_COUNT"
+            if [ "$SERVICES_COUNT" == "0" ]; then
+                echo "Create service"
+                ./kubectl apply -f ./k8s/service.yml
+            else
+                echo "Service already exist"
+            fi
+            INGRESS_COUNT=$(./kubectl get ingress | awk '{print $1}' | grep -c "http-server-demo-ingress" || true)
+            echo "Ingress count $INGRESS_COUNT"
+            if [ "$INGRESS_COUNT" == "0" ]; then
+                echo "Create service"
+                ./kubectl apply -f ./k8s/ingress.yml
+            else
+                echo "Ingress already exist"
+            fi
+
+            PUBLIC_HOSTNAME="$(./kubectl get service -n kube-system kublr-feature-ingress-nginx-ingress-controller -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+            echo "Public hostname $PUBLIC_HOSTNAME"
+
+
+
+

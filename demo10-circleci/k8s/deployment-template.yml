@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: http-server-demo
+spec:
+  selector:
+    matchLabels:
+      app: http-server-demo
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: http-server-demo
+    spec:
+      containers:
+        - name: http-server-demo
+          image: $DEPLOY_DOCKER_IMAGE
+          ports:
+            - containerPort: 8080
+
