@@ -1,0 +1,120 @@
+{
+  "kind": "Cluster",
+  "metadata": {
+    "ownerReferences": [],
+    "name": "circleci-demo",
+    "space": "default"
+  },
+  "spec": {
+    "master": {
+      "locations": [
+        {
+          "aws": {
+            "instanceType": "t2.large",
+            "availabilityZones": [
+              "us-east-1e"
+            ],
+            "instanceMonitoring": false,
+            "subnetIds": [
+              ""
+            ]
+          },
+          "locationRef": "aws1"
+        }
+      ],
+      "minNodes": 1,
+      "kublrVariant": "aws-ubuntu-16.04"
+    },
+    "locations": [
+      {
+        "name": "aws1",
+        "aws": {
+          "region": "us-east-1",
+          "enableTerminationProtection": false,
+          "awsApiAccessSecretRef": "awscirclecicred",
+          "vpcId": "",
+          "vpcCidrBlock": "",
+          "iamInstanceProfileMasterPathName": "",
+          "iamRoleMasterPathName": "",
+          "iamInstanceProfileNodePathName": "",
+          "iamRoleNodePathName": ""
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "name": "default",
+        "locations": [
+          {
+            "locationRef": "aws1",
+            "aws": {
+              "instanceType": "t2.xlarge",
+              "instanceMonitoring": false,
+              "availabilityZones": [
+                "us-east-1e",
+                "us-east-1f"
+              ],
+              "subnetIds": [
+                "",
+                ""
+              ]
+            }
+          }
+        ],
+        "kublrVariant": "aws-ubuntu-16.04",
+        "autoscaling": false,
+        "minNodes": 2
+      }
+    ],
+    "features": {
+      "logging": {
+        "logCollection": {
+          "enabled": true
+        },
+        "sinks": [
+          {
+            "selfHosted": {
+              "enabled": false,
+              "masterNodes": 1,
+              "dataNodes": 1,
+              "clientNodes": 1
+            }
+          },
+          {
+            "centralLogging": {
+              "enabled": true,
+              "masterNodes": 1,
+              "dataNodes": 1,
+              "clientNodes": 1,
+              "persistent": true,
+              "size": "128G"
+            }
+          }
+        ]
+      },
+      "monitoring": {
+        "enabled": true,
+        "platformClient": {
+          "enabled": true,
+          "prometheus": {
+            "persistent": false
+          }
+        }
+      },
+      "ingress": {
+        "ingressControllers": [
+          {
+            "nginx": {
+              "enabled": true,
+              "acme": {
+                "enabled": false,
+                "apiUrl": null
+              }
+            }
+          }
+        ]
+      },
+      "controlPlane": null
+    }
+  }
+}
