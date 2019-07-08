@@ -3,12 +3,15 @@ kind: Ingress
 metadata:
   name: http-server-demo-ingress
   annotations:
-    ingress.kubernetes.io/rewrite-target: /
+    ingress.kubernetes.io/use-regex: "true"
+    ingress.kubernetes.io/configuration-snippet: |
+      rewrite "(?i)/(.*)" /$1 break;
+      rewrite "(?i)$" / break;
 spec:
   rules:
     - http:
         paths:
-          - path: /
+          - path: /?(.*)
             backend:
               serviceName: http-server-demo-service
               servicePort: 8080

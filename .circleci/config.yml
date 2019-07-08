@@ -4,7 +4,7 @@
 #
 version: 2.1
 orbs:
-  kublr-api: kublr/kublr-api@dev:6
+  kublr-api: kublr/kublr-api@1.0.0
 jobs:
   build:
     docker:
