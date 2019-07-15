@@ -2,45 +2,43 @@
 
 ## Motivation
 
-Spark, Jupyter Notebook, and HDFS are very popular tools in the data scientists community.
+Spark, Jupyter Notebook, and HDFS are very popular tools in the data science community.
 HDFS carries the burden of storing big data,
 Spark provides many powerful tools to process them,
 while Jupyter Notebook is a de-facto standard UI to manage them all.
 
 On the other hand, Kubernetes and Kublr make it simple and easy to deploy,
-scale, and otherwise manage all that stuff.
+scale, and otherwise manage everything.
 This guide explains how to do it.
 
 ## Features
 
-- Jupyter Notebook with Spark 2.4.0 (Hadoop 2.6) and Python 3.6.
-  - PySpark is already installed.
-  - Notebooks are persistent.
-- HDFS (optional).
+- Jupyter Notebook with Spark 2.4.0 (Hadoop 2.6) and Python 3.6
+  - PySpark is already installed
+  - Notebooks are persistent
+- HDFS (optional)
   - Default installation includes:
-    - 2 namenodes, 1 active and 1 standby, with 100 GB volume each.
-    - 4 datanodes.
-    - 3 journalnodes with 20 GB volume each.
-    - 3 zookeeper servers (to make sure only one namenode is active) with 5 GB volume each.
-    - an HDFS client pod.
-  - Persistent data.
+    - 2 namenodes, 1 active and 1 standby, with 100 GB volume each
+    - 4 datanodes
+    - 3 journalnodes with 20 GB volume each
+    - 3 zookeeper servers (to make sure only one namenode is active) with 5 GB volume each
+    - an HDFS client pod
+  - Persistent data
   - Reliability: even if all pods fail, they are recovered automatically, and previously stored data is available. However, transparent failover during working with HDFS from Jupyter Notebook is not guaranteed, at least because active and standby name nodes can swap.
-- Spark 2.4.0 (Hadoop 2.6).
-  - Kubernetes creates as many workers as the user requests creating a `pyspark.SparkContext` in Jupyter Notebook.
-  - Kubernetes delete workers automatically when the user stops the `pyspark.SparkContext` or the Python3 kernel in Jupyter Notebook.
+- Spark 2.4.0 (Hadoop 2.6)
+  - Kubernetes creates as many workers as the user requests creating a `pyspark.SparkContext` in Jupyter Notebook
+  - Kubernetes deletes workers automatically when the user stops the `pyspark.SparkContext` or the Python3 kernel in Jupyter Notebook
   - Kubernetes restores failed workers automatically, even during calculations. A restored worker picks up and completes the work interrupted by the failure, so the failover is transparent to users.
-  - Multi-user work is supported: each user can create their own independent workers.
-  - Data locality: data processing is performed in such a way that the data stored on and HDFS node is processed by Spark workers executing on the same Kubernetes node (if any), which leads to significantly reduced network usage and better performance.
-- Auto-scaling Kubernetes cluster (optional).
-  - Automatic creation of more Kubernetes nodes when there are no enough resources for spark workers.
-  - Automatic down-scaling when the load is low to decrease costs.
+  - Multi-user work is supported: each user can create their own independent workers
+  - Data locality: data processing is performed in such a way that the data stored on and HDFS node is processed by Spark workers executing on the same Kubernetes node (if any), which leads to significantly reduced network usage and better performance
+- Auto-scaling Kubernetes cluster (optional)
+  - Automatic creation of more Kubernetes nodes when there are no enough resources for spark workers
+  - Automatic down-scaling when the load is low to decrease costs
 
-## Preparing Docker Images For Jupyter Notebook And Spark Workers
+## Preparing Docker Images for Jupyter Notebook and Spark Workers
 
-We have already prepared all necessary images,
-so if you trust us,
-you can just use them and skip this part of the guide.
-Otherwise, read on.
+We have already prepared all necessary images for you to use.
+If you would like to prepare your own, read on.
 
 We assume that you've cloned this repository,
 and your current working directory is `demo9-jupyter-pyspark`
@@ -68,7 +66,7 @@ Hereafter, replace `kublr` by your Docker Hub account name.
 ```
 
 Push the image to the Docker Hub so K8S will be able to create worker pods from it.
-You likely have to call `docker login` at first.
+You will likely have to call `docker login` at first.
 
 ```bash
 docker push kublr/spark-py:2.4.0-hadoop-2.6
@@ -81,10 +79,10 @@ docker build -t kublr/pyspark-notebook:spark-2.4.0-hadoop-2.6 -f jupyter/Dockerf
 docker push kublr/pyspark-notebook:spark-2.4.0-hadoop-2.6
 ```
 
-## Creating A K8S Cluster Using Kublr
+## Creating a K8S Cluster Using Kublr
 
-Here we use [Amazon Web Services(AWS)](https://aws.amazon.com/) as a cloud in which our cluster will run,
-but it is up to you to choose an appropriate one or even run it on your own servers.
+Here we've used [Amazon Web Services(AWS)](https://aws.amazon.com/) as a cloud in which our cluster will run,
+but you will need to choose the appropriate one for your, or even run it on your own servers.
 
 To manage necessary AWS resources, such as EC2 Instances, Elastic Load Balancers, etc., proper AWS credentials are required.
 
@@ -116,14 +114,14 @@ Finally, let's open the Kubernetes Dashboard. Click `Open Dashboard`.
 
 ![K8SDashboardAuth1](screenshots/k8s-dashboard-auth1.png)
 
-Huh, authentication is required.
-Let's get a token from the downloaded `~/.kube/config`:
+Authentication is required.
+Get a token from the downloaded `~/.kube/config`:
 
 ```bash
 cat ~/.kube/config | grep token
 ```
 
-This commands prints something like
+This command prints something like
 
 ```
 - name: spark-jupyter-admin-token
@@ -131,7 +129,7 @@ This commands prints something like
 ```
 
 That `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` is what we need.
-Just copy-paste it into the form:
+Copy-paste it into the form:
 
 ![K8SDashboardAuth2](screenshots/k8s-dashboard-auth2.png)
 
@@ -143,13 +141,7 @@ We assume that you've cloned this repository,
 and your current working directory is `demo9-jupyter-pyspark`
 (the one this `README.md` is in).
 
-First, upgrade Tiller on the server:
-
-```bash
-helm init --upgrade
-```
-
-Wait a minute and install Jupyter Notebook as a chart (`my-pyspark-notebook` is an example name of this chart "instance"):
+Install Jupyter Notebook as a chart (`my-pyspark-notebook` is an example name of this chart "instance"):
 
 ```bash
 helm install -n my-pyspark-notebook charts/pyspark-notebook
@@ -164,7 +156,7 @@ AttachVolume.Attach failed for volume "pvc-82ebda50-6a58-11e9-80e4-02a82483ac0c"
 
 It usually disappears in a minute, when a volume for notebooks is created.
 
-## Associating Your Domain With The Ingress Hostname
+## Associating Your Domain with the Ingress Hostname
 
 Obtain the ingress controller hostname:
 
@@ -178,8 +170,8 @@ Configure your domain so that it points to that hostname.
 
 ## Opening Jupyter Notebook
 
-Suppose, the domain name is stored in `K8S_DOMAIN` environment variable.
-Now let's use it to construct the Jupyter URL:
+Store the domain name in `K8S_DOMAIN` environment variable
+and use it to construct the Jupyter URL:
 
 ```bash
 kubectl exec $(kubectl get pods -l app.kubernetes.io/instance=my-pyspark-notebook -o go-template --template '{{(index .items 0).metadata.name}}') jupyter notebook list \
@@ -188,8 +180,8 @@ kubectl exec $(kubectl get pods -l app.kubernetes.io/instance=my-pyspark-noteboo
     | sed "s|http://0.0.0.0:8888|https://$K8S_DOMAIN|"
 ```
 
-Open this URL in a web browser.
-It is a good idea to wait a couple of minutes before opening the Jupyter Notebook for the first time to avoid possible DNS caching issues.
+Open this URL in a web browser,
+however wait a few minutes before opening the Jupyter Notebook for the first time to avoid possible DNS-caching issues.
 
 ## Doing Some Work
 
@@ -220,7 +212,7 @@ As a result, 2 pods/workers should be created:
 
 ![k8s-dashboard1.png](screenshots/k8s-dashboard1.png)
 
-For the first time, worker pod creation may take some seconds, because Kubernetes downloads the Docker image.
+The first time you do this, the worker pod creation may take a bit of time as Kubernetes downloads the Docker image.
 
 Calculate something on the Spark cluster:
 
@@ -231,7 +223,7 @@ rdd.sum()
 
 It should return `4999999950000000`.
 
-We can make sure by Spark worker pod logs that all pods participated in the calculation:
+We can make sure, by Spark worker pod logs, that all pods participated in the calculation:
 
 `pyspark-shell-1553840280618-exec-1`:
 
@@ -267,18 +259,18 @@ In the end, it's a good practice to clean up the resources:
 sc.stop()
 ```
 
-This command deletes the worker pods. The same effect has shutting down the notebook kernel.
+This command deletes the worker pods with the same effect as shutting down the notebook kernel.
 
 ## HDFS (Optional)
 
 [HDFS on Kubernetes](https://github.com/apache-spark-on-k8s/kubernetes-HDFS) project contains a ready-to-use Helm chart to deploy HDFS on a Kubernetes cluster.
 
 Default setup includes:
-- 2 namenodes, 1 active and 1 standby, with 100 GB volume each;
-- 4 datanodes;
-- 3 journalnodes with 20 GB volume each;
-- 3 zookeeper servers (to make sure only one namenode is active) with 5 GB volume each;
-- an HDFS client pod.
+- 2 namenodes, 1 active and 1 standby, with 100 GB volume each
+- 4 datanodes
+- 3 journalnodes with 20 GB volume each
+- 3 zookeeper servers (to make sure only one namenode is active) with 5 GB volume each
+- HDFS client pod
 
 To deploy HDFS, let's first clone that repo and go to the directory:
 
@@ -288,7 +280,7 @@ cd kubernetes-HDFS
 ```
 
 To get access to HDFS Web UI later,
-it's required to edit properties `dfs.namenode.http-address.hdfs-k8s.nn0` and `dfs.namenode.http-address.hdfs-k8s.nn1`
+you're required to edit properties `dfs.namenode.http-address.hdfs-k8s.nn0` and `dfs.namenode.http-address.hdfs-k8s.nn1`
 in `charts/hdfs-config-k8s/templates/configmap.yaml`:
 
 ```xml
@@ -312,7 +304,7 @@ helm dependency build charts/hdfs-k8s
 helm install -n my-hdfs charts/hdfs-k8s
 ```
 
-We use default release name `my-hdfs`, but you don't have to.
+We use default release name `my-hdfs`.
 If you use another name, substitute it instead of `my-hdfs`
 when following this guide chapter.
 
@@ -360,7 +352,7 @@ _CLIENT=$(kubectl get pods -l app=hdfs-client,release=my-hdfs -o name |  \
       cut -d/ -f 2)
 ```
 
-If you've deployed HDFS as described above, there should be 2 name nodes.
+If you've deployed HDFS as described above, there should be two name nodes.
 Let's check them:
 
 ```bash
@@ -376,15 +368,15 @@ kubectl exec $_CLIENT -- hdfs haadmin -getServiceState nn1
 
 Output: `standby`.
 
-OK, we have 1 master and 1 replica.
+We have one master and one replica.
 Let's save our data as a CSV file on HDFS.
-We have to use the hostname of master to do it, because nodes in standby mode cannot accept write requests.
+Use the hostname of master to do it, because nodes in standby mode cannot accept write requests.
 
 ```python
 df.write.csv("hdfs://my-hdfs-namenode-0.my-hdfs-namenode.default.svc.cluster.local/user/hdfs/test/example.csv")
 ```
 
-We can make sure by Spark worker pod logs that all pods participated in the calculation and writing:
+We can make sure that all pods participated in the calculation and writing by checking Spark worker pod logs:
 
 `pyspark-shell-1554099778487-exec-1`:
 
@@ -436,7 +428,7 @@ Found 3 items
 -rw-r--r--   3 root supergroup   85000000 2019-04-01 06:25 /user/hdfs/test/example.csv/part-00001-8de1982a-d9f9-4632-82bc-2f623b6b51ca-c000.csv
 ```
 
-As we can see, it consists of 2 parts, one for each Spark worker.
+As we can see, it consists of two parts, one for each Spark worker.
 
 Now let's read the file:
 
@@ -444,7 +436,7 @@ Now let's read the file:
 sparkSession.read.csv("hdfs://my-hdfs-namenode-0.my-hdfs-namenode.default.svc.cluster.local/user/hdfs/test/example.csv").count() # should print 10000000
 ```
 
-Reading is performed also on both Spark pods:
+Reading is performed on both Spark pods:
 
 `pyspark-shell-1554099778487-exec-1`:
 
@@ -484,9 +476,9 @@ Reading is performed also on both Spark pods:
 2019-04-01 08:37:42 INFO  Executor:54 - Finished task 1.0 in stage 3.0 (TID 5). 1668 bytes result sent to driver
 ```
 
-## Opening Access To The Spark UI (Optional)
+## Opening Access to the Spark UI (Optional)
 
-Say, you created a Spark context and thus Spark workers:
+You created a Spark context and thus Spark workers:
 
 ```python
 import pyspark
@@ -514,10 +506,10 @@ and then observe Spark at http://localhost:8001/api/v1/namespaces/default/servic
 
 ![SparkUI](screenshots/spark-ui.png)
 
-## Resource Requests And Limits Of Spark Worker Pods (Optional)
+## Resource Requests and Limits Of Spark Worker Pods (Optional)
 
 Requests and limits of memory and CPU are set on the Spark context creation and cannot be modified later.
-By default, they are set to `1408Mi` and `1` cpu respectively.
+By default, they are set to `1408Mi` and `1` CPU respectively.
 
 To customize CPU limit, set `spark.kubernetes.executor.limit.cores`:
 
@@ -580,7 +572,7 @@ sc = pyspark.SparkContext(conf=conf)
 ## Kubernetes Cluster Auto-Scaling (Optional)
 
 You may have already experienced Kubernetes cluster auto-scaling when deploying HDFS (see above).
-If no, read on.
+If not, please read on.
 
 Let's create a Spark context with more executors:
 
@@ -600,13 +592,13 @@ conf.set("spark.driver.port", "29413")
 sc = pyspark.SparkContext(conf=conf)
 ```
 
-Oops, some pods are out of resources:
+Some pods are out of resources:
 
 ![k8s-dashboard2.png](screenshots/k8s-dashboard2.png)
 
 Don't panic!
-Remember we configured auto-scaling when was creating the Kubernetes cluster?
-Let's wait for 10 minutes or so for Kublr to create more nodes.
+Remember that we configured auto-scaling when creating the Kubernetes cluster.
+Simply wait, for 10 minutes or so, for Kublr to create more nodes.
 
 Here they are:
 
@@ -620,10 +612,10 @@ Now let's delete them:
 sc.stop()
 ```
 
-Then the extra nodes are not needed anymore, so Kublr can down-scales the cluster.
-It also takes about 10 minutes.
+The extra nodes are not needed anymore, so Kublr can down-scale the cluster.
+This also takes about 10 minutes.
 
 ## Sources
 
-- [Getting Started with Spark on Kubernetes by Bernd Fondermann](http://blog.brainlounge.de/memoryleaks/getting-started-with-spark-on-kubernetes/).
-- [HDFS on Kubernetes](https://github.com/apache-spark-on-k8s/kubernetes-HDFS).
+- [Getting Started with Spark on Kubernetes by Bernd Fondermann](http://blog.brainlounge.de/memoryleaks/getting-started-with-spark-on-kubernetes/)
+- [HDFS on Kubernetes](https://github.com/apache-spark-on-k8s/kubernetes-HDFS)
