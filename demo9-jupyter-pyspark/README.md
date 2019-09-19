@@ -334,6 +334,13 @@ sparkSession = SparkSession.builder \
     .config("spark.executor.instances", "2") \
     .config("spark.driver.host", "my-pyspark-notebook-spark-driver.default.svc.cluster.local") \
     .config("spark.driver.port", "29413") \
+    .config("spark.hadoop.fs.defaultFS", "hdfs://hdfs-k8s") \
+    .config("spark.hadoop.fs.default.name", "hdfs://hdfs-k8s") \
+    .config("spark.hadoop.dfs.nameservices", "hdfs-k8s") \
+    .config("spark.hadoop.dfs.ha.namenodes.hdfs-k8s", "nn0,nn1") \
+    .config("spark.hadoop.dfs.namenode.rpc-address.hdfs-k8s.nn0", "my-hdfs-namenode-0.my-hdfs-namenode.default.svc.cluster.local:8020") \
+    .config("spark.hadoop.dfs.namenode.rpc-address.hdfs-k8s.nn1", "my-hdfs-namenode-1.my-hdfs-namenode.default.svc.cluster.local:8020") \
+    .config("spark.hadoop.dfs.client.failover.proxy.provider.hdfs-k8s", "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider") \
     .getOrCreate()
 sc = sparkSession.sparkContext
 ```
@@ -344,36 +351,10 @@ Describe some data:
 df = sparkSession.createDataFrame(sc.parallelize(range(10000000)).map(lambda i: ((i, i * 2))))
 ```
 
-Hereafter, we will execute HDFS commands from a dedicated pod created by `helm install` along with others.
-Here we obtain its name:
-
-```bash
-_CLIENT=$(kubectl get pods -l app=hdfs-client,release=my-hdfs -o name |  \
-      cut -d/ -f 2)
-```
-
-If you've deployed HDFS as described above, there should be two name nodes.
-Let's check them:
-
-```bash
-kubectl exec $_CLIENT -- hdfs haadmin -getServiceState nn0
-```
-
-It prints `active`.
-Well, how about another?
-
-```bash
-kubectl exec $_CLIENT -- hdfs haadmin -getServiceState nn1
-```
-
-Output: `standby`.
-
-We have one master and one replica.
 Let's save our data as a CSV file on HDFS.
-Use the hostname of master to do it, because nodes in standby mode cannot accept write requests.
 
 ```python
-df.write.csv("hdfs://my-hdfs-namenode-0.my-hdfs-namenode.default.svc.cluster.local/user/hdfs/test/example.csv")
+df.write.csv("/user/hdfs/test/example.csv")
 ```
 
 We can make sure that all pods participated in the calculation and writing by checking Spark worker pod logs:
@@ -413,6 +394,14 @@ We can make sure that all pods participated in the calculation and writing by ch
 2019-04-01 06:25:47 INFO  Executor:54 - Finished task 0.0 in stage 1.0 (TID 1). 2727 bytes result sent to driver
 ```
 
+Hereafter, we will execute HDFS commands from a dedicated pod created by `helm install` along with others.
+Here we obtain its name:
+
+```bash
+_CLIENT=$(kubectl get pods -l app=hdfs-client,release=my-hdfs -o name |  \
+      cut -d/ -f 2)
+```
+
 Let's review the file in HDFS:
 
 ```bash
@@ -433,7 +422,7 @@ As we can see, it consists of two parts, one for each Spark worker.
 Now let's read the file:
 
 ```python
-sparkSession.read.csv("hdfs://my-hdfs-namenode-0.my-hdfs-namenode.default.svc.cluster.local/user/hdfs/test/example.csv").count() # should print 10000000
+sparkSession.read.csv("/user/hdfs/test/example.csv").count() # should print 10000000
 ```
 
 Reading is performed on both Spark pods:
