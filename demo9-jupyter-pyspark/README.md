@@ -161,7 +161,7 @@ It usually disappears in a minute, when a volume for notebooks is created.
 Obtain the ingress controller hostname:
 
 ```bash
-kubectl get service -n kube-system kublr-feature-ingress-nginx-ingress-controller -o 'jsonpath={.status.loadBalancer.ingress[0].hostname}'
+kubectl get service -n kube-system kublr-ingress-nginx-ingress-controller -o 'jsonpath={.status.loadBalancer.ingress[0].hostname}'
 ```
 
 In case of AWS, it should print something like `aa5e1e16a543111e9ae3d0e6004935f1-473611111.us-east-1.elb.amazonaws.com`.
