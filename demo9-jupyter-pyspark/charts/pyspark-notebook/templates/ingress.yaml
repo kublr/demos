@@ -1,4 +1,4 @@
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   labels:
@@ -13,6 +13,9 @@ spec:
   rules:
     - http:
         paths:
-          - backend:
-              serviceName: {{ template "pyspark-notebook.jupyter.service.name" . }}
-              servicePort: {{ .Values.jupyter.externalPort }}
+        - pathType: ImplementationSpecific
+          backend:
+            service:
+              name: {{ template "pyspark-notebook.jupyter.service.name" . }}
+              port:
+                number: {{ .Values.jupyter.externalPort }}
